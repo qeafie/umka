@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branch=$(git symbolic-ref --quiet --short HEAD) || {
+    echo 'Сначала переключитесь на отдельную рабочую ветку.' >&2
+    exit 1
+}
+
+case "$branch" in
+    main|master)
+        echo 'Коммиты в main/master запрещены. Создайте отдельную рабочую ветку.' >&2
+        exit 1
+        ;;
+esac

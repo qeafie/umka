@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+docker compose version >/dev/null
+if [ ! -f .env ]; then
+    cp .env.example .env
+fi
+
+if [ ! -f vendor/autoload.php ]; then
+    docker run --rm \
+        --user "$(id -u):$(id -g)" \
+        -e COMPOSER_HOME=/tmp/composer \
+        -v "$PWD:/var/www/html" \
+        -w /var/www/html \
+        laravelsail/php84-composer:latest \
+        composer install --no-interaction --prefer-dist
+fi
+
+./vendor/bin/sail up -d --build --wait
+./vendor/bin/sail composer install --no-interaction --prefer-dist
+./vendor/bin/sail artisan config:clear
+if grep -q '^APP_KEY=$' .env; then
+    ./vendor/bin/sail artisan key:generate
+fi
+./vendor/bin/sail artisan migrate --force
+docker compose exec -T --user root laravel.test chown -R sail:sail /var/www/html/node_modules
+./vendor/bin/sail npm ci --fetch-timeout=30000 --fetch-retries=2 --maxsockets=5
+./vendor/bin/sail npm run build
+rm -f public/hot
+
+if git rev-parse --git-dir >/dev/null 2>&1; then
+    git config core.hooksPath .githooks
+fi
+
+echo 'Проект запущен. Откройте APP_URL из .env (по умолчанию http://localhost:8000).'

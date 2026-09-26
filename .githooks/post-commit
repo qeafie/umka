@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+echo "Запуск тестов после коммита $(git rev-parse --short HEAD)"
+if ! ./bin/test; then
+    echo 'Тесты не прошли. Коммит уже создан: исправьте ошибки до push.' >&2
+    exit 1
+fi
