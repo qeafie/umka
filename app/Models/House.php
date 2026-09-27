@@ -26,4 +26,9 @@ class House extends Model
     {
         return $this->hasMany(Incident::class);
     }
+
+    public function membershipActivities(): HasMany
+    {
+        return $this->hasMany(HouseMembershipActivity::class);
+    }
 }

@@ -12,6 +12,7 @@ servers:
 tags:
   - name: MAX session
   - name: Housing incidents
+  - name: House access
   - name: Meters
   - name: Housing request draft
 paths:
@@ -152,8 +153,78 @@ paths:
                         id: { type: integer }
                         name: { type: string }
                         address: { type: string }
-                        role: { type: string, enum: [resident, dispatcher] }
+                        role: { type: string, enum: [resident, dispatcher, moderator, house_admin] }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/houses/{house}/members:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [House access]
+      summary: Получить участников дома для рабочего места администратора
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Список участников с их ролями в этом доме
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members]
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, role, apartment]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        role: { type: string, enum: [resident, dispatcher, moderator, house_admin] }
+                        apartment: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/houses/{house}/members/{member}:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+      - name: member
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    put:
+      tags: [House access]
+      summary: Изменить роль участника в конкретном доме
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [resident, dispatcher, moderator] }
+      responses:
+        '200': { description: Роль обновлена и записана в журнал доступа. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Участник не состоит в этом доме. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [House access]
+      summary: Отозвать доступ участника к дому
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      responses:
+        '204': { description: Доступ отозван и действие записано в журнал. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Участник не состоит в этом доме. }
+        '422': { description: Нельзя отозвать собственный доступ администратора. }
   /houses/{house}/incidents:
     parameters:
       - name: house
