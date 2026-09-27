@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from './Home.vue';
 
 vi.mock('@inertiajs/vue3', () => ({
@@ -7,19 +7,113 @@ vi.mock('@inertiajs/vue3', () => ({
 }));
 
 describe('Home', () => {
-    it('shows the application name supplied by Laravel', () => {
-        const wrapper = mount(Home, {
-            props: { appName: 'Тестовый дом' },
-        });
+    const emergencyGuides = [
+        { id: 'water', title: 'Прорвало воду', summary: 'Что сделать в первую очередь' },
+        { id: 'electricity', title: 'Нет света или искрит', summary: 'Как действовать безопасно' },
+        { id: 'gas', title: 'Пахнет газом', summary: 'Сначала выйдите в безопасное место' },
+        { id: 'heating', title: 'Нет отопления', summary: 'Куда сообщить о проблеме' },
+    ];
 
-        expect(wrapper.get('h1').text()).toBe('Тестовый дом');
+    beforeEach(() => {
+        vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     });
 
-    it('makes clear that the application is still in development', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('shows the application name and the selected emergency guides', () => {
         const wrapper = mount(Home, {
-            props: { appName: 'Пульс дома' },
+            props: { appName: 'Пульс дома', emergencyGuides },
         });
 
-        expect(wrapper.text()).toContain('Приложение в разработке');
+        expect(wrapper.get('.brand span:last-child').text()).toBe('Пульс дома');
+        expect(wrapper.text()).toContain('Прорвало воду');
+        expect(wrapper.text()).toContain('Нет света или искрит');
+        expect(wrapper.text()).toContain('Пахнет газом');
+        expect(wrapper.text()).toContain('Нет отопления');
+    });
+
+    it('opens the request form for drafting a message to housing services', async () => {
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides },
+        });
+
+        await wrapper.get('[data-test="open-request-form"]').trigger('click');
+
+        expect(wrapper.text()).toContain('Составить обращение');
+        expect(wrapper.get('textarea[name="details"]')).toBeTruthy();
+    });
+
+    it('shows a step-by-step guide when a resident chooses an emergency', async () => {
+        const wrapper = mount(Home, {
+            props: {
+                appName: 'Пульс дома',
+                emergencyGuides: [
+                    {
+                        ...emergencyGuides[0],
+                        alert: 'Сначала отойдите в сухое безопасное место.',
+                        steps: [{ title: 'Уведите людей от воды', description: 'Не заходите к мокрым электроприборам.' }],
+                    },
+                ],
+            },
+        });
+
+        await wrapper.get('[data-test="guide-water"]').trigger('click');
+
+        expect(wrapper.text()).toContain('Сначала отойдите в сухое безопасное место.');
+        expect(wrapper.text()).toContain('Уведите людей от воды');
+    });
+
+    it('shows the generated draft after a resident submits the request form', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                draft: 'Обращение по теме: Прорвало воду',
+                deliveryStatus: 'draft_only',
+            }),
+        }));
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides },
+        });
+
+        await wrapper.get('[data-test="open-request-form"]').trigger('click');
+        await wrapper.get('[name="address"]').setValue('Казань, улица Примерная, дом 10');
+        await wrapper.get('[name="details"]').setValue('В ванной комнате протекает труба под раковиной.');
+        await wrapper.get('form').trigger('submit');
+
+        expect(fetch).toHaveBeenCalledWith('/appeals/preview', expect.objectContaining({ method: 'POST' }));
+        expect(wrapper.get('[data-test="draft-result"]').text()).toContain('Обращение по теме: Прорвало воду');
+        expect(wrapper.get('[data-test="delivery-status"]').text()).toContain('привычный канал связи');
+    });
+
+    it('shows a loading status and draft skeleton while preparing the request', async () => {
+        let finishRequest;
+        vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => { finishRequest = resolve; })));
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides },
+        });
+
+        await wrapper.get('[data-test="open-request-form"]').trigger('click');
+        await wrapper.get('[name="address"]').setValue('Казань, улица Примерная, дом 10');
+        await wrapper.get('[name="details"]').setValue('Протекает труба под раковиной.');
+        const submission = wrapper.get('form').trigger('submit');
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.get('[data-test="submit-status"]').attributes('role')).toBe('status');
+        expect(wrapper.get('[data-test="submit-request"]').element.disabled).toBe(true);
+        expect(wrapper.get('[data-test="draft-skeleton"]').attributes('aria-busy')).toBe('true');
+
+        finishRequest({ ok: true, json: async () => ({ draft: 'Готово', deliveryStatus: 'draft_only' }) });
+        await submission;
+    });
+
+    it('explains when emergency guides are not available', () => {
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides: [] },
+        });
+
+        expect(wrapper.get('[data-test="guides-empty"]').text()).toContain('Инструкции временно недоступны');
     });
 });
