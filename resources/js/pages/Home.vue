@@ -34,6 +34,8 @@ const incidentFeedback = ref('');
 const incidentError = ref('');
 const incidentErrors = ref({});
 const incidentForm = reactive({ issueType: 'water', location: '', details: '', incidentId: null });
+const incidentWork = reactive({});
+const isSavingWorkflow = ref(false);
 const form = reactive({
     issueType: 'water',
     address: '',
@@ -266,11 +268,71 @@ async function loadHouseIncidents() {
         }
 
         houseIncidents.value = result.incidents;
+        for (const incident of result.incidents) {
+            incidentWork[incident.id] = {
+                status: incident.status === 'reported' ? 'in_progress' : incident.status,
+                assignedTo: incident.assignedTo ?? '',
+                nextAction: incident.nextAction ?? '',
+                nextUpdateAt: incident.nextUpdateAt ? new Date(incident.nextUpdateAt).toISOString().slice(0, 16) : '',
+            };
+        }
     } catch {
         incidentError.value = 'Нет подключения к сети. Проверьте интернет и повторите попытку.';
     } finally {
         isLoadingIncidents.value = false;
     }
+}
+
+async function saveIncidentWork(incident) {
+    if (!selectedHouse.value || isSavingWorkflow.value) return;
+    isSavingWorkflow.value = true;
+    incidentError.value = '';
+    incidentFeedback.value = '';
+
+    try {
+        const response = await fetch(`/houses/${selectedHouse.value.id}/incidents/${incident.id}`, {
+            method: 'PATCH',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+            body: JSON.stringify(incidentWork[incident.id]),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            incidentError.value = result.message ?? 'Не удалось сохранить план работ. Проверьте поля.';
+            return;
+        }
+        incidentFeedback.value = 'Обновление сохранено.';
+        await loadHouseIncidents();
+    } catch {
+        incidentError.value = 'Не удалось сохранить план работ. Проверьте интернет.';
+    } finally {
+        isSavingWorkflow.value = false;
+    }
+}
+
+async function answerIncident(incident, stage, answer) {
+    if (!selectedHouse.value) return;
+    incidentError.value = '';
+    incidentFeedback.value = '';
+    try {
+        const response = await fetch(`/houses/${selectedHouse.value.id}/incidents/${incident.id}/responses`, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+            body: JSON.stringify({ stage, answer }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            incidentError.value = result.message ?? 'Не удалось сохранить ответ. Попробуйте ещё раз.';
+            return;
+        }
+        incidentFeedback.value = 'Ответ сохранён.';
+        await loadHouseIncidents();
+    } catch {
+        incidentError.value = 'Не удалось сохранить ответ. Проверьте интернет.';
+    }
+}
+
+function incidentStatusLabel(status) {
+    return ({ reported: 'Сообщено', in_progress: 'В работе', work_completed: 'Работы завершены' })[status] ?? status;
 }
 
 function joinIncident(incident) {
@@ -551,11 +613,39 @@ onBeforeUnmount(() => {
                                     <p class="eyebrow">{{ issueLabel(incident.issueType) }}</p>
                                     <h3>{{ incident.location }}</h3>
                                 </div>
-                                <span class="incident-status">{{ incident.status === 'reported' ? 'Сообщено' : 'В работе' }}</span>
+                                <span class="incident-status">{{ incidentStatusLabel(incident.status) }}</span>
                             </div>
                             <p class="incident-summary">{{ incident.reportCount }} {{ incident.reportCount === 1 ? 'сообщение' : (incident.reportCount < 5 ? 'сообщения' : 'сообщений') }}</p>
+                            <p v-if="incident.nextAction" class="incident-next-action"><strong>Следующий шаг:</strong> {{ incident.nextAction }}<span v-if="incident.nextUpdateAt">Обновление до {{ new Date(incident.nextUpdateAt).toLocaleString('ru-RU') }}</span></p>
                             <div v-if="incident.reports?.length" class="incident-reports">
                                 <p v-for="(report, index) in incident.reports" :key="index">{{ report.details }}</p>
+                            </div>
+                            <form v-if="selectedHouse.role === 'dispatcher'" class="incident-work-form" :data-test="`dispatcher-controls-${incident.id}`" @submit.prevent="saveIncidentWork(incident)">
+                                <h4>План работ</h4>
+                                <div class="field"><label :for="`assigned-${incident.id}`">Исполнитель</label><input :id="`assigned-${incident.id}`" v-model.trim="incidentWork[incident.id].assignedTo" name="assignedTo" required maxlength="120" placeholder="Аварийная служба"></div>
+                                <div class="field"><label :for="`next-action-${incident.id}`">Следующий шаг</label><input :id="`next-action-${incident.id}`" v-model.trim="incidentWork[incident.id].nextAction" name="nextAction" required minlength="5" maxlength="500" placeholder="Что будет сделано"></div>
+                                <div class="field"><label :for="`next-update-${incident.id}`">Когда сообщить о ходе работ</label><input :id="`next-update-${incident.id}`" v-model="incidentWork[incident.id].nextUpdateAt" name="nextUpdateAt" type="datetime-local" required></div>
+                                <div class="field"><label :for="`work-status-${incident.id}`">Статус</label><select :id="`work-status-${incident.id}`" v-model="incidentWork[incident.id].status" name="status"><option value="in_progress">В работе</option><option value="work_completed">Работы завершены</option></select></div>
+                                <button class="button button-secondary" :data-test="`save-work-${incident.id}`" type="submit" :disabled="isSavingWorkflow"><span v-if="isSavingWorkflow" class="spinner" aria-hidden="true"></span>{{ isSavingWorkflow ? 'Сохраняем…' : 'Сохранить план' }}</button>
+                            </form>
+                            <div v-else-if="incident.status === 'reported' || incident.status === 'in_progress'" class="incident-vote" :data-test="`scope-check-${incident.id}`">
+                                <strong>Проблема сохраняется?</strong>
+                                <span v-if="incident.myScopeResponse">Ваш ответ: {{ incident.myScopeResponse === 'problem_present' ? 'проблема есть' : incident.myScopeResponse === 'service_working' ? 'услуга работает' : 'не удалось проверить' }}</span>
+                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'problem_present')">Да, проблема есть</button>
+                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'service_working')">У меня всё работает</button>
+                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'cannot_check')">Не могу проверить</button>
+                                <small>Ответы показываются диспетчеру только общим числом.</small>
+                            </div>
+                            <div v-else-if="incident.status === 'work_completed'" class="incident-vote" :data-test="`recovery-check-${incident.id}`">
+                                <strong>Работы завершены. У вас восстановилась услуга?</strong>
+                                <span>Подтверждений: {{ incident.recovery?.restored ?? 0 }} · проблема сохраняется: {{ incident.recovery?.problemRemains ?? 0 }} · ждём ответов: {{ incident.recovery?.noResponse ?? 0 }}</span>
+                                <template v-if="incident.canConfirmRecovery">
+                                    <span v-if="incident.myRecoveryResponse">Ваш ответ сохранён</span>
+                                    <button class="text-button" type="button" :data-test="`confirm-restored-${incident.id}`" @click="answerIncident(incident, 'recovery', 'restored')">Да, всё восстановилось</button>
+                                    <button class="text-button" type="button" @click="answerIncident(incident, 'recovery', 'problem_remains')">Нет, проблема сохраняется</button>
+                                    <button class="text-button" type="button" @click="answerIncident(incident, 'recovery', 'cannot_check')">Не могу проверить</button>
+                                </template>
+                                <small v-else>Подтвердить восстановление могут жители, сообщившие об этой проблеме.</small>
                             </div>
                             <button
                                 v-if="incident.status === 'reported' || incident.status === 'in_progress'"

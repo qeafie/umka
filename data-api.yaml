@@ -72,9 +72,11 @@ required_checks:
         incidents[].id: integer
         incidents[].issueType: water|electricity|gas|heating
         incidents[].location: string
-        incidents[].status: reported|in_progress
+        incidents[].status: reported|in_progress|work_completed
         incidents[].reportCount: integer
         incidents[].updatedAt: RFC3339 date-time
+        incidents[].scopeResponses.total: integer
+        incidents[].recovery: object|null
       forbidden_json_fields:
         incidents[].reports: resident response must not contain neighbors' report text
   - id: dispatcher-incident-details
@@ -94,6 +96,55 @@ required_checks:
         incidents[].reports: array
         incidents[].reports[].details: string
         incidents[].reports[].createdAt: RFC3339 date-time
+  - id: dispatcher-update-incident-work
+    method: PATCH
+    path: /houses/{house}/incidents/{incident}
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_dispatcher house membership
+        incident: id from demo data or resident incident list
+      body:
+        status: in_progress|work_completed
+        assignedTo: Аварийная служба
+        nextAction: Проверить восстановление услуги
+        nextUpdateAt: RFC3339 date-time
+    user_role: dispatcher
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        incident.status: in_progress|work_completed
+        incident.assignedTo: string
+        incident.nextAction: string
+        incident.recovery.round: integer
+  - id: resident-incident-response
+    method: POST
+    path: /houses/{house}/incidents/{incident}/responses
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_resident house list
+        incident: id of a current active or completed incident
+      body:
+        stage: scope|recovery
+        answer: problem_present|service_working|cannot_check|restored|problem_remains
+    user_role: resident
+    expected_status_codes: [200, 201]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        response.stage: scope|recovery
+        response.answer: string
+        response.round: integer
   - id: resident-create-incident-message
     method: POST
     path: /houses/{house}/incidents

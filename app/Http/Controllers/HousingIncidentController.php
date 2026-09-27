@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\DTOs\HousingIncidentData;
 use App\Models\House;
 use App\Models\Incident;
-use App\Models\IncidentReport;
+use App\Services\IncidentPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +28,7 @@ class HousingIncidentController extends Controller
         return response()->json(['houses' => $houses]);
     }
 
-    public function index(House $house, Request $request): JsonResponse
+    public function index(House $house, Request $request, IncidentPresenter $presenter): JsonResponse
     {
         $membership = $house->members()
             ->whereKey($request->user()->id)
@@ -40,15 +40,16 @@ class HousingIncidentController extends Controller
             ->withCount('reports')
             ->latest('updated_at')
             ->get()
-            ->map(fn (Incident $incident): array => $this->presentIncident(
+            ->map(fn (Incident $incident): array => $presenter->present(
                 $incident,
+                $request->user()->id,
                 $membership->pivot->role === 'dispatcher',
             ));
 
         return response()->json(['incidents' => $incidents]);
     }
 
-    public function store(HousingIncidentData $data, House $house, Request $request): JsonResponse
+    public function store(HousingIncidentData $data, House $house, Request $request, IncidentPresenter $presenter): JsonResponse
     {
         $membership = $house->members()
             ->whereKey($request->user()->id)
@@ -87,33 +88,7 @@ class HousingIncidentController extends Controller
         });
 
         return response()->json([
-            'incident' => $this->presentIncident($incident, false),
+            'incident' => $presenter->present($incident, $request->user()->id, false),
         ], 201);
-    }
-
-    /** @return array<string, mixed> */
-    private function presentIncident(Incident $incident, bool $includeReports): array
-    {
-        $result = [
-            'id' => $incident->id,
-            'issueType' => $incident->issue_type,
-            'location' => $incident->location,
-            'status' => $incident->status,
-            'reportCount' => $incident->reports_count,
-            'updatedAt' => $incident->updated_at->toIso8601String(),
-        ];
-
-        if ($includeReports) {
-            $result['reports'] = $incident->reports()
-                ->latest()
-                ->get(['id', 'details', 'created_at'])
-                ->map(fn (IncidentReport $report): array => [
-                    'details' => $report->details,
-                    'createdAt' => $report->created_at->toIso8601String(),
-                ])
-                ->all();
-        }
-
-        return $result;
     }
 }

@@ -91,8 +91,20 @@ h1 { max-width: 820px; margin-bottom: 13px; font-size: clamp(36px, 6vw, 66px); l
 .incident-card h3 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
 .incident-status { padding: 5px 10px; border-radius: 999px; background: var(--white); color: var(--text); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .incident-summary { margin: 8px 0 0; }
+.incident-next-action { display: grid; gap: 4px; margin: 14px 0 0; padding: 14px; border-left: 3px solid var(--blue); background: var(--white); color: var(--text); line-height: 1.5; }
+.incident-next-action span { color: var(--muted); font-size: 14px; }
 .incident-reports { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .incident-reports p { margin: 0; color: var(--text); font-size: 15px; }
+.incident-work-form, .incident-vote { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.incident-work-form h4, .incident-vote strong, .incident-vote span, .incident-vote small { grid-column: 1 / -1; }
+.incident-work-form h4 { margin: 0; font-size: 18px; }
+.incident-work-form .button { align-self: end; justify-self: start; }
+.incident-vote { grid-template-columns: repeat(3, max-content); align-items: start; }
+.incident-vote .text-button { min-height: 42px; }
+.incident-vote small { color: var(--muted); font-size: 14px; }
+.incident-vote span { color: var(--muted); }
+.incident-card .field { min-width: 0; }
+.incident-card input, .incident-card select { width: 100%; min-width: 0; }
 .text-button { padding: 0; border: 0; background: transparent; color: #315fc9; font-size: 15px; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .incident-card > .text-button { margin-top: 14px; }
 .incident-form { padding-top: 22px; border-top: 1px solid var(--line); }
@@ -190,6 +202,9 @@ h1 { max-width: 820px; margin-bottom: 13px; font-size: clamp(36px, 6vw, 66px); l
     .meters-card { align-items: stretch; flex-direction: column; padding: 22px; }
     .incident-card { padding: 17px; }
     .incident-card-heading { flex-direction: column; }
+    .incident-work-form, .incident-vote { grid-template-columns: 1fr; }
+    .incident-vote .text-button { min-height: 40px; }
+    .incident-work-form .button { width: 100%; }
     .incident-list .section-heading p { text-align: left; }
     .meter-create-form, .meter-card { padding: 17px; }
     .reading-form { grid-template-columns: 1fr; }

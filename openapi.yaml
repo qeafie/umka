@@ -57,6 +57,77 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '503':
           description: Вход MAX недоступен, пока не задан токен бота.
+  /houses/{house}/incidents/{incident}:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+      - name: incident
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    patch:
+      tags: [Housing incidents]
+      summary: Диспетчер назначает исполнителя и обновляет план работ
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, assignedTo, nextAction, nextUpdateAt]
+              properties:
+                status: { type: string, enum: [in_progress, work_completed] }
+                assignedTo: { type: string, maxLength: 120 }
+                nextAction: { type: string, minLength: 5, maxLength: 500 }
+                nextUpdateAt: { type: string, format: date-time }
+      responses:
+        '200':
+          description: План сохранён; завершение запускает новый раунд проверки восстановления.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [incident]
+                properties:
+                  incident: { $ref: '#/components/schemas/Incident' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Дом или проблема не найдены. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /houses/{house}/incidents/{incident}/responses:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+      - name: incident
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Housing incidents]
+      summary: Житель отвечает на проверку состояния услуги или восстановления
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stage, answer]
+              properties:
+                stage: { type: string, enum: [scope, recovery] }
+                answer: { type: string, enum: [problem_present, service_working, cannot_check, restored, problem_remains] }
+      responses:
+        '201': { description: Ответ сохранён впервые. }
+        '200': { description: Ответ обновлён. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Дом или проблема не найдены. }
+        '422': { $ref: '#/components/responses/ValidationError' }
   /my/houses:
     get:
       tags: [Housing incidents]
@@ -273,14 +344,39 @@ components:
   schemas:
     Incident:
       type: object
-      required: [id, issueType, location, status, reportCount, updatedAt]
+      required: [id, issueType, location, status, reportCount, updatedAt, scopeResponses, recovery]
       properties:
         id: { type: integer }
         issueType: { type: string, enum: [water, electricity, gas, heating] }
         location: { type: string }
-        status: { type: string, enum: [reported, in_progress] }
+        status: { type: string, enum: [reported, in_progress, work_completed] }
         reportCount: { type: integer, minimum: 1 }
         updatedAt: { type: string, format: date-time }
+        assignedTo: { type: [string, 'null'] }
+        nextAction: { type: [string, 'null'] }
+        nextUpdateAt: { type: [string, 'null'], format: date-time }
+        workCompletedAt: { type: [string, 'null'], format: date-time }
+        scopeResponses:
+          type: object
+          properties:
+            problemPresent: { type: integer }
+            serviceWorking: { type: integer }
+            cannotCheck: { type: integer }
+            total: { type: integer }
+        recovery:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                round: { type: integer }
+                totalReports: { type: integer }
+                restored: { type: integer }
+                problemRemains: { type: integer }
+                cannotCheck: { type: integer }
+                noResponse: { type: integer }
+        myScopeResponse: { type: [string, 'null'] }
+        myRecoveryResponse: { type: [string, 'null'] }
+        canConfirmRecovery: { type: boolean }
         reports:
           type: array
           description: Приватные тексты сообщений, возвращаемые только диспетчеру этого дома.

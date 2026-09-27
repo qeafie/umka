@@ -3,6 +3,7 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HousingIncidentController;
 use App\Http\Controllers\HousingRequestDraftController;
+use App\Http\Controllers\IncidentWorkflowController;
 use App\Http\Controllers\MaxSessionController;
 use App\Http\Controllers\MeterController;
 use App\Http\Controllers\MeterReadingController;
@@ -19,6 +20,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/houses/{house}/incidents', [HousingIncidentController::class, 'store'])
         ->whereNumber('house')
         ->name('houses.incidents.store');
+    Route::patch('/houses/{house}/incidents/{incident}', [IncidentWorkflowController::class, 'update'])
+        ->whereNumber(['house', 'incident'])
+        ->name('houses.incidents.update');
+    Route::post('/houses/{house}/incidents/{incident}/responses', [IncidentWorkflowController::class, 'respond'])
+        ->whereNumber(['house', 'incident'])
+        ->name('houses.incidents.responses.store');
     Route::get('/meters', [MeterController::class, 'index'])->name('meters.index');
     Route::post('/meters', [MeterController::class, 'store'])->name('meters.store');
     Route::post('/meters/{meterId}/readings', [MeterReadingController::class, 'store'])
