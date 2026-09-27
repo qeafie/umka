@@ -63,6 +63,71 @@ class IncidentWorkflowTest extends TestCase
             ->assertJsonMissingPath('incidents.0.reports');
     }
 
+    public function test_old_scope_answers_are_marked_stale_instead_of_counted_as_current(): void
+    {
+        [$house, $resident] = $this->makeHouseWithMembers();
+        $incident = $this->makeIncident($house, 'in_progress');
+
+        $this->actingAs($resident)
+            ->postJson("/houses/{$house->id}/incidents/{$incident->id}/responses", [
+                'stage' => 'scope',
+                'answer' => 'problem_present',
+            ])
+            ->assertCreated();
+
+        $this->travel(25)->hours();
+
+        $this->actingAs($resident)
+            ->getJson("/houses/{$house->id}/incidents")
+            ->assertOk()
+            ->assertJsonPath('incidents.0.scopeResponses.problemPresent', 0)
+            ->assertJsonPath('incidents.0.scopeResponses.staleResponses', 1)
+            ->assertJsonPath('incidents.0.myScopeResponseIsFresh', false);
+
+        $this->actingAs($resident)
+            ->postJson("/houses/{$house->id}/incidents/{$incident->id}/responses", [
+                'stage' => 'scope',
+                'answer' => 'service_working',
+            ])
+            ->assertOk();
+
+        $this->actingAs($resident)
+            ->getJson("/houses/{$house->id}/incidents")
+            ->assertOk()
+            ->assertJsonPath('incidents.0.scopeResponses.serviceWorking', 1)
+            ->assertJsonPath('incidents.0.scopeResponses.staleResponses', 0)
+            ->assertJsonPath('incidents.0.myScopeResponseIsFresh', true);
+    }
+
+    public function test_old_recovery_answers_are_counted_as_unconfirmed_and_marked_stale(): void
+    {
+        [$house, $resident, $dispatcher] = $this->makeHouseWithMembers();
+        $incident = $this->makeIncident($house, 'in_progress');
+        $this->addReport($incident, $resident, 'Нет горячей воды в квартире.');
+
+        $this->actingAs($dispatcher)->patchJson("/houses/{$house->id}/incidents/{$incident->id}", [
+            'status' => 'work_completed',
+            'assignedTo' => 'Аварийная служба',
+            'nextAction' => 'Проверить восстановление',
+            'nextUpdateAt' => '2026-09-27T19:00:00+04:00',
+        ])->assertOk();
+
+        $this->actingAs($resident)->postJson("/houses/{$house->id}/incidents/{$incident->id}/responses", [
+            'stage' => 'recovery',
+            'answer' => 'restored',
+        ])->assertCreated();
+
+        $this->travel(25)->hours();
+
+        $this->actingAs($resident)
+            ->getJson("/houses/{$house->id}/incidents")
+            ->assertOk()
+            ->assertJsonPath('incidents.0.recovery.restored', 0)
+            ->assertJsonPath('incidents.0.recovery.staleResponses', 1)
+            ->assertJsonPath('incidents.0.recovery.noResponse', 1)
+            ->assertJsonPath('incidents.0.myRecoveryResponseIsFresh', false);
+    }
+
     public function test_dispatcher_completion_starts_recovery_check_and_tracks_missing_answers(): void
     {
         [$house, $resident, $dispatcher, $neighbor] = $this->makeHouseWithMembers();
