@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HouseAccessController;
 use App\Http\Controllers\HousingIncidentController;
 use App\Http\Controllers\HousingRequestDraftController;
 use App\Http\Controllers\IncidentWorkflowController;
@@ -13,6 +14,12 @@ Route::get('/', HomeController::class)->name('home');
 Route::post('/appeals/preview', HousingRequestDraftController::class)->name('appeals.preview');
 Route::post('/auth/max', MaxSessionController::class)->middleware('throttle:10,1')->name('auth.max');
 Route::middleware('auth')->group(function () {
+    Route::get('/admin/houses/{house}/members', [HouseAccessController::class, 'index'])
+        ->whereNumber('house')->name('admin.houses.members.index');
+    Route::put('/admin/houses/{house}/members/{member}', [HouseAccessController::class, 'update'])
+        ->whereNumber(['house', 'member'])->name('admin.houses.members.update');
+    Route::delete('/admin/houses/{house}/members/{member}', [HouseAccessController::class, 'destroy'])
+        ->whereNumber(['house', 'member'])->name('admin.houses.members.destroy');
     Route::get('/my/houses', [HousingIncidentController::class, 'houses'])->name('houses.mine');
     Route::get('/houses/{house}/incidents', [HousingIncidentController::class, 'index'])
         ->whereNumber('house')

@@ -18,6 +18,10 @@ test_accounts:
     role: dispatcher
     max_user_id_config: UMKA_DEMO_DISPATCHER_MAX_ID
     authentication: MAX signed initData from the configured test bot; no static password is used.
+  - id: demo_house_admin
+    role: house_admin (house-scoped)
+    max_user_id_config: UMKA_DEMO_HOUSE_ADMIN_MAX_ID
+    authentication: MAX signed initData from the configured test bot; no static password is used.
 authentication_bootstrap:
   description: >-
     Open the deployed mini-app from MAX under the listed test account. Send the
@@ -53,7 +57,7 @@ required_checks:
         houses[].id: integer
         houses[].name: string
         houses[].address: string
-        houses[].role: resident|dispatcher
+        houses[].role: resident|dispatcher|moderator|house_admin
   - id: resident-incident-summary
     method: GET
     path: /houses/{house}/incidents
@@ -145,6 +149,44 @@ required_checks:
         response.stage: scope|recovery
         response.answer: string
         response.round: integer
+  - id: house-admin-members
+    method: GET
+    path: /admin/houses/{house}/members
+    parameters:
+      headers: { Accept: application/json }
+      query: {}
+      path:
+        house: id from demo_house_admin house list
+      body: null
+    user_role: house_admin
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        members: array
+        members[].id: integer
+        members[].name: string
+        members[].role: resident|dispatcher|moderator|house_admin
+  - id: house-admin-change-member-role
+    method: PUT
+    path: /admin/houses/{house}/members/{member}
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_house_admin house list
+        member: existing member id from members list
+      body: { role: dispatcher }
+    user_role: house_admin
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        member.id: integer
+        member.role: resident|dispatcher|moderator
   - id: resident-create-incident-message
     method: POST
     path: /houses/{house}/incidents

@@ -30,6 +30,14 @@
       "email": "umka.demo.dispatcher@example.test",
       "role": "dispatcher",
       "apartment": null
+    },
+    {
+      "key": "house_admin",
+      "maxUserIdConfig": "house_admin_max_user_id",
+      "name": "Администратор дома",
+      "email": "umka.demo.admin@example.test",
+      "role": "house_admin",
+      "apartment": null
     }
   ],
   "incident": {
