@@ -1,0 +1,50 @@
+{
+  "description": "Synthetic data for local and API workflow checks. The addresses, users, readings and incident are fictional.",
+  "house": {
+    "name": "Демонстрационный дом",
+    "address": "Казань, улица Примерная, дом 10"
+  },
+  "members": [
+    {
+      "key": "resident",
+      "maxUserIdConfig": "resident_max_user_id",
+      "name": "Анна Иванова",
+      "email": "umka.demo.resident@example.test",
+      "role": "resident",
+      "apartment": "24",
+      "report": "С утра нет горячей воды."
+    },
+    {
+      "key": "neighbor",
+      "maxUserIdConfig": "neighbor_max_user_id",
+      "name": "Иван Петров",
+      "email": "umka.demo.neighbor@example.test",
+      "role": "resident",
+      "apartment": "38",
+      "report": "В квартире тоже нет горячей воды."
+    },
+    {
+      "key": "dispatcher",
+      "maxUserIdConfig": "dispatcher_max_user_id",
+      "name": "Диспетчер дома",
+      "email": "umka.demo.dispatcher@example.test",
+      "role": "dispatcher",
+      "apartment": null
+    }
+  ],
+  "incident": {
+    "issueType": "water",
+    "location": "Подъезд 2",
+    "status": "reported"
+  },
+  "meter": {
+    "ownerKey": "resident",
+    "name": "Холодная вода",
+    "service": "cold_water",
+    "serialNumber": "DEMO-2048",
+    "reading": {
+      "value": "124.375",
+      "recordedAt": "2026-09-01T10:00:00Z"
+    }
+  }
+}

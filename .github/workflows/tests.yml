@@ -27,4 +27,8 @@ jobs:
       - run: npm ci
       - run: vendor/bin/pint --test
       - run: ./bin/test --local
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          DB_URL: ''
       - run: npm run build

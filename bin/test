@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 
 status=0
 if [ "${1:-}" = "--local" ]; then
-    php artisan test || status=1
+    DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test || status=1
     npm test || status=1
 else
     ./vendor/bin/sail artisan test || status=1

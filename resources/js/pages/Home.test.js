@@ -201,4 +201,55 @@ describe('Home', () => {
         expect(wrapper.get('[data-test="meter-error"]').text()).toContain('откройте приложение через MAX');
         expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it('lets a resident open the housing incidents screen and see a house problem', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url) => {
+            if (url === '/my/houses') {
+                return { ok: true, json: async () => ({ houses: [{ id: 4, name: 'Дом на Примерной', address: 'ул. Примерная, 10', role: 'resident' }] }) };
+            }
+
+            return {
+                ok: true,
+                json: async () => ({ incidents: [{ id: 9, issueType: 'water', location: 'Подъезд 2', status: 'reported', reportCount: 3, updatedAt: '2026-09-27T10:00:00Z' }] }),
+            };
+        }));
+        const wrapper = mount(Home, {
+            props: { appName: 'Умка', emergencyGuides, resident: { name: 'Анна Иванова', role: 'resident' } },
+        });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/my/houses', expect.any(Object));
+        expect(fetch).toHaveBeenCalledWith('/houses/4/incidents', expect.any(Object));
+        expect(wrapper.get('[data-test="incidents-house-title"]').text()).toContain('Дом на Примерной');
+        expect(wrapper.get('[data-test="incident-9"]').text()).toContain('3 сообщения');
+    });
+
+    it('submits a report about a problem from the incident screen', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+            if (url === '/my/houses') {
+                return { ok: true, json: async () => ({ houses: [{ id: 4, name: 'Дом на Примерной', address: 'ул. Примерная, 10', role: 'resident' }] }) };
+            }
+
+            if (url === '/houses/4/incidents' && options.method === 'POST') {
+                return { ok: true, status: 201, json: async () => ({ incident: { id: 9 } }) };
+            }
+
+            return { ok: true, json: async () => ({ incidents: [] }) };
+        }));
+        const wrapper = mount(Home, {
+            props: { appName: 'Умка', emergencyGuides, resident: { name: 'Анна Иванова', role: 'resident' } },
+        });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[name="incident-location"]').setValue('Подъезд 2');
+        await wrapper.get('[name="incident-details"]').setValue('Нет горячей воды с утра.');
+        await wrapper.get('[data-test="submit-incident"]').trigger('submit');
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/houses/4/incidents', expect.objectContaining({ method: 'POST' }));
+        expect(wrapper.get('[data-test="incident-feedback"]').text()).toContain('Сообщение сохранено');
+    });
 });

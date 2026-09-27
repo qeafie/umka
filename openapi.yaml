@@ -1,0 +1,323 @@
+openapi: 3.1.0
+info:
+  title: Умка API
+  version: 0.1.0
+  description: >-
+    Контракт текущих веб-маршрутов мини-приложения. Публичный адрес и доступ
+    через MAX необходимо настроить перед внешней проверкой. Демонстрационные
+    записи являются синтетическими и не передаются поставщикам ЖКХ.
+servers:
+  - url: https://umka.invalid
+    description: Заменить на публичный HTTPS-адрес тестового развёртывания.
+tags:
+  - name: MAX session
+  - name: Housing incidents
+  - name: Meters
+  - name: Housing request draft
+paths:
+  /auth/max:
+    post:
+      tags: [MAX session]
+      summary: Проверить подписанные данные запуска MAX и создать сессию
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [initData]
+              properties:
+                initData:
+                  type: string
+                  maxLength: 8192
+                  description: Подписанные данные запуска MAX; значение нельзя записывать в логи.
+      responses:
+        '200':
+          description: Сессия создана
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Защищённая сессионная cookie.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [csrfToken, user]
+                properties:
+                  csrfToken: { type: string }
+                  user:
+                    type: object
+                    required: [name, role]
+                    properties:
+                      name: { type: string }
+                      role: { type: string, example: resident }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503':
+          description: Вход MAX недоступен, пока не задан токен бота.
+  /my/houses:
+    get:
+      tags: [Housing incidents]
+      summary: Получить дома, к которым привязан текущий пользователь
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Дома и роль пользователя в каждом доме
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [houses]
+                properties:
+                  houses:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, address, role]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        address: { type: string }
+                        role: { type: string, enum: [resident, dispatcher] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /houses/{house}/incidents:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Housing incidents]
+      summary: Получить проблемы дома
+      description: Поле reports с текстами сообщений включается только для диспетчера этого дома.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Сводка проблем дома
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [incidents]
+                properties:
+                  incidents:
+                    type: array
+                    items: { $ref: '#/components/schemas/Incident' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Housing incidents]
+      summary: Создать сообщение о проблеме или присоединиться к активной проблеме
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issueType, location, details]
+              properties:
+                issueType: { type: string, enum: [water, electricity, gas, heating] }
+                location: { type: string, maxLength: 120, example: Подъезд 2 }
+                details: { type: string, minLength: 10, maxLength: 2000 }
+                incidentId:
+                  type: [integer, 'null']
+                  description: При наличии добавляет сообщение к активной проблеме того же дома, вида и участка.
+      responses:
+        '201':
+          description: Сообщение сохранено внутри Умки; во внешнюю организацию оно не отправлено.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [incident]
+                properties:
+                  incident: { $ref: '#/components/schemas/Incident' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Дом или указанная активная проблема не найдены. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /meters:
+    get:
+      tags: [Meters]
+      summary: Получить личные счётчики и последние показания
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Счётчики текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [meters]
+                properties:
+                  meters:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, service, serviceLabel, unit, readings]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        service: { type: string }
+                        serviceLabel: { type: string }
+                        unit: { type: string }
+                        serialNumber: { type: [string, 'null'] }
+                        readings: { type: array, items: { $ref: '#/components/schemas/Reading' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Meters]
+      summary: Добавить личный счётчик
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, service]
+              properties:
+                name: { type: string, maxLength: 80 }
+                service: { type: string, enum: [cold_water, hot_water, electricity, gas] }
+                serialNumber: { type: [string, 'null'], maxLength: 40 }
+      responses:
+        '201': { description: Счётчик сохранён только в личном журнале. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /meters/{meterId}/readings:
+    post:
+      tags: [Meters]
+      summary: Сохранить личное показание счётчика
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      parameters:
+        - name: meterId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reading]
+              properties:
+                reading: { type: string, pattern: '^\d{1,9}([.,]\d{1,3})?$' }
+      responses:
+        '201':
+          description: Показание сохранено локально; поставщику не передано.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reading]
+                properties:
+                  reading: { $ref: '#/components/schemas/Reading' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Счётчик не найден у текущего пользователя. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /appeals/preview:
+    post:
+      tags: [Housing request draft]
+      summary: Сформировать текст обращения, который житель отправит самостоятельно
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issueType, address, details]
+              properties:
+                issueType: { type: string, enum: [water, electricity, gas, heating] }
+                address: { type: string, maxLength: 255 }
+                apartment: { type: [string, 'null'], maxLength: 20 }
+                residentName: { type: [string, 'null'], maxLength: 120 }
+                details: { type: string, minLength: 10, maxLength: 2000 }
+      responses:
+        '200':
+          description: Черновик только для копирования; не сохранён и не отправлен.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [draft, deliveryStatus]
+                properties:
+                  draft: { type: string }
+                  deliveryStatus: { type: string, const: draft_only }
+        '422': { $ref: '#/components/responses/ValidationError' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: umka_session
+      description: Идентификатор сессии, выданный после успешной проверки initData MAX.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: Токен со страницы приложения или из успешного ответа /auth/max.
+  schemas:
+    Incident:
+      type: object
+      required: [id, issueType, location, status, reportCount, updatedAt]
+      properties:
+        id: { type: integer }
+        issueType: { type: string, enum: [water, electricity, gas, heating] }
+        location: { type: string }
+        status: { type: string, enum: [reported, in_progress] }
+        reportCount: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+        reports:
+          type: array
+          description: Приватные тексты сообщений, возвращаемые только диспетчеру этого дома.
+          items:
+            type: object
+            required: [details, createdAt]
+            properties:
+              details: { type: string }
+              createdAt: { type: string, format: date-time }
+    Reading:
+      type: object
+      properties:
+        id: { type: integer }
+        value: { type: string }
+        recordedAt: { type: string, format: date-time }
+        status: { type: string, enum: [saved_locally] }
+  responses:
+    Unauthorized:
+      description: Требуется действующая сессия MAX.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+    Forbidden:
+      description: У пользователя нет членства в этом доме.
+    ValidationError:
+      description: Ошибка проверки запроса.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items: { type: string }
