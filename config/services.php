@@ -18,6 +18,12 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'max' => [
+        'bot_token' => env('MAX_BOT_TOKEN'),
+        'init_data_ttl_seconds' => env('MAX_INIT_DATA_TTL_SECONDS', 86400),
+        'clock_skew_seconds' => env('MAX_CLOCK_SKEW_SECONDS', 60),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
