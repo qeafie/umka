@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from './Home.vue';
 
@@ -115,5 +115,88 @@ describe('Home', () => {
         });
 
         expect(wrapper.get('[data-test="guides-empty"]').text()).toContain('Инструкции временно недоступны');
+    });
+
+    it('establishes a resident session from signed MAX launch data', async () => {
+        const csrfMeta = document.createElement('meta');
+        csrfMeta.name = 'csrf-token';
+        csrfMeta.content = 'initial-token';
+        document.head.append(csrfMeta);
+        vi.stubGlobal('WebApp', { initData: 'signed-max-launch-data' });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ csrfToken: 'rotated-token', user: { name: 'Анна Иванова', role: 'resident' } }),
+        }));
+
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides },
+        });
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/auth/max', expect.objectContaining({ method: 'POST' }));
+        expect(wrapper.get('[data-test="resident-name"]').text()).toBe('Анна Иванова');
+        expect(csrfMeta.content).toBe('rotated-token');
+        csrfMeta.remove();
+    });
+
+    it('lets an authenticated resident add a meter and save a reading locally', async () => {
+        const meter = {
+            id: 7,
+            name: 'Холодная вода, ванная',
+            service: 'cold_water',
+            serviceLabel: 'Холодная вода',
+            unit: 'м³',
+            serialNumber: 'ХВ-2048',
+            readings: [],
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => {
+            if (url === '/meters' && options.method === 'POST') {
+                return { ok: true, status: 201, json: async () => ({ meter }) };
+            }
+
+            if (url === '/meters/7/readings') {
+                return {
+                    ok: true,
+                    status: 201,
+                    json: async () => ({ reading: { value: '124.375', recordedAt: '2026-09-27T10:00:00Z', status: 'saved_locally' } }),
+                };
+            }
+
+            return { ok: true, status: 200, json: async () => ({ meters: [] }) };
+        }));
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides, resident: { name: 'Анна Иванова', role: 'resident' } },
+        });
+
+        await wrapper.get('[data-test="open-meters"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[data-test="meters-empty"]').exists()).toBe(true);
+
+        await wrapper.get('[name="meter-name"]').setValue('Холодная вода, ванная');
+        await wrapper.get('[name="meter-service"]').setValue('cold_water');
+        await wrapper.get('[data-test="add-meter"]').trigger('submit');
+        await flushPromises();
+        expect(wrapper.get('[data-test="meter-7"]').text()).toContain('Холодная вода, ванная');
+
+        await wrapper.get('[name="reading-7"]').setValue('124.375');
+        await wrapper.get('.reading-form').trigger('submit');
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/meters/7/readings', expect.objectContaining({ method: 'POST' }));
+        expect(wrapper.get('[data-test="meter-7"]').text()).toContain('124.375');
+        expect(wrapper.text()).toContain('Сохранено в приложении');
+    });
+
+    it('explains that meter history requires a MAX resident session', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const wrapper = mount(Home, {
+            props: { appName: 'Пульс дома', emergencyGuides },
+        });
+
+        await wrapper.get('[data-test="open-meters"]').trigger('click');
+
+        expect(wrapper.get('[data-test="meter-error"]').text()).toContain('откройте приложение через MAX');
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
