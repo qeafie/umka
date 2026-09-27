@@ -39,7 +39,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .app-shell { width: min(100% - 48px, 1120px); margin: 0 auto; padding: 22px 0 64px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 58px; margin-bottom: clamp(36px, 6vw, 72px); }
 .brand { display: inline-flex; align-items: center; gap: 12px; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-size: 19px; font-weight: 760; letter-spacing: -.035em; }
-.brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: var(--ink); color: var(--lime); font-size: 20px; line-height: 1; }
+.brand-mark { display: block; width: 42px; height: 42px; object-fit: contain; }
 .topbar-label { color: var(--muted); font-size: 14px; font-weight: 650; }
 .page-intro { max-width: 800px; margin: 0 0 30px; }
 .eyebrow { margin: 0 0 10px; color: #3d66c6; font-size: 13px; font-weight: 800; letter-spacing: .095em; text-transform: uppercase; }

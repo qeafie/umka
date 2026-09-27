@@ -290,7 +290,7 @@ onBeforeUnmount(() => {
     <main class="app-shell">
         <header class="topbar">
             <button class="brand" type="button" aria-label="На главную страницу" @click="goHome">
-                <span class="brand-mark" aria-hidden="true">П</span>
+                <img class="brand-mark" src="/brand/umka-mark.svg" alt="" aria-hidden="true">
                 <span>{{ appName }}</span>
             </button>
             <span v-if="currentResident" class="topbar-label" data-test="resident-name">{{ currentResident.name }}</span>
@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
 
         <template v-if="activeView === 'home'">
             <section class="page-intro" aria-labelledby="home-title">
-                <p class="eyebrow">Умный город · MAX</p>
+                <p class="eyebrow">Удобный мобильный коммунальный ассистент</p>
                 <h1 id="home-title">Что случилось дома?</h1>
                 <p class="intro-copy">
                     Выберите ситуацию — подскажем, что сделать и куда обратиться.

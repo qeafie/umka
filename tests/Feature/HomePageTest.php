@@ -10,20 +10,18 @@ class HomePageTest extends TestCase
     public function test_home_page_renders_the_vue_application(): void
     {
         $this->withoutVite();
-        config(['app.name' => 'Пульс дома']);
-
         $this->get('/')
             ->assertOk()
+            ->assertSee('/brand/umka-mark.svg')
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Home')
-                ->where('appName', 'Пульс дома')
+                ->where('appName', 'Умка')
             );
     }
 
     public function test_inertia_navigation_returns_the_page_payload(): void
     {
         $this->withoutVite();
-        config(['app.name' => 'Пульс дома']);
         $version = $this->get('/')->viewData('page')['version'];
 
         $this->get('/', [
@@ -33,7 +31,7 @@ class HomePageTest extends TestCase
             ->assertOk()
             ->assertHeader('X-Inertia', 'true')
             ->assertJsonPath('component', 'Home')
-            ->assertJsonPath('props.appName', 'Пульс дома');
+            ->assertJsonPath('props.appName', 'Умка');
     }
 
     public function test_health_endpoint_is_available(): void
