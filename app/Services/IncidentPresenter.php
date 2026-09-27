@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Incident;
+use Illuminate\Support\Carbon;
 
 class IncidentPresenter
 {
@@ -11,12 +12,13 @@ class IncidentPresenter
     {
         $reportCount = (int) ($incident->reports_count ?? $incident->reports()->count());
         $scopeCounts = $this->responseCounts($incident, 'scope', 0);
-        $scopeTotal = array_sum($scopeCounts);
-        $myScopeResponse = $incident->responses()
+        $scopeTotal = array_sum($scopeCounts) - $scopeCounts['stale'];
+        $myScopeQuery = $incident->responses()
             ->where('user_id', $userId)
             ->where('stage', 'scope')
-            ->where('round', 0)
-            ->value('answer');
+            ->where('round', 0);
+        $myScopeResponse = (clone $myScopeQuery)->value('answer');
+        $myScopeResponseIsFresh = (clone $myScopeQuery)->where('updated_at', '>=', $this->freshnessCutoff())->exists();
 
         $result = [
             'id' => $incident->id,
@@ -34,8 +36,11 @@ class IncidentPresenter
                 'serviceWorking' => $scopeCounts['service_working'],
                 'cannotCheck' => $scopeCounts['cannot_check'],
                 'total' => $scopeTotal,
+                'staleResponses' => $scopeCounts['stale'],
             ],
             'myScopeResponse' => $myScopeResponse,
+            'myScopeResponseIsFresh' => $myScopeResponseIsFresh,
+            'responseFreshnessHours' => $this->freshnessHours(),
             'recovery' => null,
             'myRecoveryResponse' => null,
             'canConfirmRecovery' => false,
@@ -44,7 +49,7 @@ class IncidentPresenter
         if ($incident->status === 'work_completed') {
             $round = (int) $incident->recovery_round;
             $recoveryCounts = $this->responseCounts($incident, 'recovery', $round);
-            $recoveryResponseCount = array_sum($recoveryCounts);
+            $recoveryResponseCount = array_sum($recoveryCounts) - $recoveryCounts['stale'];
             $isReporter = $incident->reports()->where('user_id', $userId)->exists();
 
             $result['recovery'] = [
@@ -53,15 +58,16 @@ class IncidentPresenter
                 'restored' => $recoveryCounts['restored'],
                 'problemRemains' => $recoveryCounts['problem_remains'],
                 'cannotCheck' => $recoveryCounts['cannot_check'],
+                'staleResponses' => $recoveryCounts['stale'],
                 'noResponse' => max(0, $reportCount - $recoveryResponseCount),
             ];
-            $result['myRecoveryResponse'] = $isReporter
-                ? $incident->responses()
-                    ->where('user_id', $userId)
-                    ->where('stage', 'recovery')
-                    ->where('round', $round)
-                    ->value('answer')
-                : null;
+            $myRecoveryQuery = $incident->responses()
+                ->where('user_id', $userId)
+                ->where('stage', 'recovery')
+                ->where('round', $round);
+            $result['myRecoveryResponse'] = $isReporter ? (clone $myRecoveryQuery)->value('answer') : null;
+            $result['myRecoveryResponseIsFresh'] = $isReporter
+                && (clone $myRecoveryQuery)->where('updated_at', '>=', $this->freshnessCutoff())->exists();
             $result['canConfirmRecovery'] = $isReporter;
         }
 
@@ -82,12 +88,15 @@ class IncidentPresenter
     /** @return array<string, int> */
     private function responseCounts(Incident $incident, string $stage, int $round): array
     {
-        $counts = $incident->responses()
+        $query = $incident->responses()
             ->where('stage', $stage)
-            ->where('round', $round)
+            ->where('round', $round);
+        $counts = (clone $query)
+            ->where('updated_at', '>=', $this->freshnessCutoff())
             ->selectRaw('answer, COUNT(*) as aggregate')
             ->groupBy('answer')
             ->pluck('aggregate', 'answer');
+        $stale = (clone $query)->where('updated_at', '<', $this->freshnessCutoff())->count();
 
         return [
             'problem_present' => (int) $counts->get('problem_present', 0),
@@ -95,6 +104,17 @@ class IncidentPresenter
             'cannot_check' => (int) $counts->get('cannot_check', 0),
             'restored' => (int) $counts->get('restored', 0),
             'problem_remains' => (int) $counts->get('problem_remains', 0),
+            'stale' => $stale,
         ];
+    }
+
+    private function freshnessHours(): int
+    {
+        return max(1, (int) config('incidents.response_freshness_hours', 24));
+    }
+
+    private function freshnessCutoff(): Carbon
+    {
+        return now()->subHours($this->freshnessHours());
     }
 }

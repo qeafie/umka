@@ -296,4 +296,24 @@ describe('Home', () => {
         expect(fetch).toHaveBeenCalledWith('/houses/4/incidents/9/responses', expect.objectContaining({ method: 'POST' }));
         expect(wrapper.get('[data-test="incident-feedback"]').text()).toContain('Ответ сохранён');
     });
+
+    it('distinguishes fresh resident checks from stale answers', async () => {
+        const incident = {
+            id: 9, issueType: 'water', location: 'Подъезд 2', status: 'in_progress', reportCount: 2,
+            scopeResponses: { total: 1, staleResponses: 1 },
+            myScopeResponse: 'problem_present', myScopeResponseIsFresh: false,
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url) => {
+            if (url === '/my/houses') return { ok: true, json: async () => ({ houses: [{ id: 4, name: 'Дом', address: 'ул. Тестовая, 1', role: 'resident' }] }) };
+            return { ok: true, json: async () => ({ incidents: [incident] }) };
+        }));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Житель', role: 'resident' } } });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="scope-check-9"]').text()).toContain('Свежих ответов: 1');
+        expect(wrapper.get('[data-test="scope-check-9"]').text()).toContain('устарели и требуют проверки: 1');
+        expect(wrapper.get('[data-test="scope-check-9"]').text()).toContain('обновите ответ');
+    });
 });

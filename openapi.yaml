@@ -434,6 +434,9 @@ components:
             serviceWorking: { type: integer }
             cannotCheck: { type: integer }
             total: { type: integer }
+            staleResponses: { type: integer, description: Ответы старше responseFreshnessHours; не учитываются среди актуальных. }
+        responseFreshnessHours: { type: integer, minimum: 1 }
+        myScopeResponseIsFresh: { type: boolean }
         recovery:
           oneOf:
             - type: 'null'
@@ -445,8 +448,10 @@ components:
                 problemRemains: { type: integer }
                 cannotCheck: { type: integer }
                 noResponse: { type: integer }
+                staleResponses: { type: integer, description: Устаревшие ответы считаются неподтверждёнными в noResponse. }
         myScopeResponse: { type: [string, 'null'] }
         myRecoveryResponse: { type: [string, 'null'] }
+        myRecoveryResponseIsFresh: { type: boolean }
         canConfirmRecovery: { type: boolean }
         reports:
           type: array
