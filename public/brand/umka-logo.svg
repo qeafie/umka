@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 184" role="img" aria-labelledby="title desc">
+  <title id="title">Умка — Удобный мобильный коммунальный ассистент</title>
+  <desc id="desc">Логотип Умки: знак белого медведя, название и подпись о помощи по дому.</desc>
+  <g transform="translate(10 10)">
+    <rect width="164" height="164" rx="46" fill="#090c11"/>
+    <circle cx="54" cy="54" r="20" fill="#f2f6fa"/>
+    <circle cx="110" cy="54" r="20" fill="#f2f6fa"/>
+    <path d="M30 84c0-28 23-51 52-51s52 23 52 51v20c0 25-23 44-52 44s-52-19-52-44V84Z" fill="#f2f6fa"/>
+    <ellipse cx="82" cy="105" rx="25" ry="20" fill="#d7dee7"/>
+    <circle cx="61" cy="82" r="6" fill="#090c11"/>
+    <circle cx="103" cy="82" r="6" fill="#090c11"/>
+    <path d="M74 103c0-4.5 3.5-8 8-8s8 3.5 8 8c0 3-3.5 5.5-8 5.5s-8-2.5-8-5.5Z" fill="#090c11"/>
+    <path d="M82 109v7m-10 0c2.7 4.4 6 6.4 10 6.4s7.3-2 10-6.4" fill="none" stroke="#090c11" stroke-linecap="round" stroke-width="4"/>
+    <path d="M47 145h70" stroke="#b9f52b" stroke-linecap="round" stroke-width="8"/>
+  </g>
+  <text x="212" y="103" fill="#090c11" font-family="Arial, Helvetica, sans-serif" font-size="94" font-weight="800" letter-spacing="-5">Умка</text>
+  <text x="218" y="145" fill="#65707f" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="600" letter-spacing=".4">Удобный мобильный коммунальный ассистент</text>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 520" role="img" aria-labelledby="title desc">
+  <title id="title">Умка — помощник по дому</title>
+  <desc id="desc">Спокойный белый медведь в шарфе цвета лайм. Геометричный маскот сервиса Умка.</desc>
+  <circle cx="240" cy="254" r="220" fill="#f2f6fa"/>
+  <path d="M131 316c-15 28-24 65-24 105 0 32 25 58 57 58h152c32 0 57-26 57-58 0-40-9-77-24-105" fill="#fff" stroke="#090c11" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+  <path d="M111 347c-27 2-46 24-46 52 0 22 17 40 39 40h22m243-92c27 2 46 24 46 52 0 22-17 40-39 40h-22" fill="#fff" stroke="#090c11" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+  <path d="M159 452c9 13 21 20 36 20h22m104-20c-9 13-21 20-36 20h-22" fill="none" stroke="#090c11" stroke-linecap="round" stroke-width="16"/>
+  <circle cx="163" cy="117" r="43" fill="#fff" stroke="#090c11" stroke-width="15"/>
+  <circle cx="317" cy="117" r="43" fill="#fff" stroke="#090c11" stroke-width="15"/>
+  <path d="M113 180c0-72 57-129 127-129s127 57 127 129v57c0 68-56 119-127 119s-127-51-127-119v-57Z" fill="#fff" stroke="#090c11" stroke-linejoin="round" stroke-width="16"/>
+  <ellipse cx="240" cy="252" rx="61" ry="47" fill="#d7dee7"/>
+  <circle cx="190" cy="208" r="8" fill="#090c11"/>
+  <circle cx="290" cy="208" r="8" fill="#090c11"/>
+  <path d="M222 247c0-10 8-18 18-18s18 8 18 18c0 7-8 12-18 12s-18-5-18-12Z" fill="#090c11"/>
+  <path d="M240 259v15m-22 0c6 9 13 13 22 13s16-4 22-13" fill="none" stroke="#090c11" stroke-linecap="round" stroke-width="7"/>
+  <path d="M133 313c32 22 67 33 107 33s75-11 107-33l-6 57c-28 21-62 32-101 32s-73-11-101-32l-6-57Z" fill="#b9f52b" stroke="#090c11" stroke-linejoin="round" stroke-width="12"/>
+  <path d="m302 349 47 9-23 80-43-10 19-79Z" fill="#4f83ff" stroke="#090c11" stroke-linejoin="round" stroke-width="10"/>
+  <path d="M152 483h58m60 0h58" stroke="#090c11" stroke-linecap="round" stroke-width="14"/>
+</svg>

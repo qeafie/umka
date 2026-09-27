@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "qeafie/umka",
     "type": "project",
-    "description": "Пульс дома: основа приложения для жителей и диспетчеров.",
+    "description": "Умка — удобный мобильный коммунальный ассистент.",
     "keywords": [
         "laravel",
         "framework"
