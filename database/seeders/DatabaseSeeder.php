@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Demo data will be introduced with the first domain feature.
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(DemoHousingDataSeeder::class);
+        }
     }
 }

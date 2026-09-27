@@ -1,0 +1,174 @@
+schema_version: '1.0'
+solution:
+  id: umka
+  name: Умка
+base_url: https://umka.invalid
+base_url_note: Replace with the reachable public HTTPS deployment URL before evaluation.
+openapi_file: openapi.yaml
+test_accounts:
+  - id: demo_resident
+    role: resident
+    max_user_id_config: UMKA_DEMO_RESIDENT_MAX_ID
+    authentication: MAX signed initData from the configured test bot; no static password is used.
+  - id: demo_neighbor
+    role: resident
+    max_user_id_config: UMKA_DEMO_NEIGHBOR_MAX_ID
+    authentication: MAX signed initData from the configured test bot; no static password is used.
+  - id: demo_dispatcher
+    role: dispatcher
+    max_user_id_config: UMKA_DEMO_DISPATCHER_MAX_ID
+    authentication: MAX signed initData from the configured test bot; no static password is used.
+authentication_bootstrap:
+  description: >-
+    Open the deployed mini-app from MAX under the listed test account. Send the
+    platform-signed initData to POST /auth/max, keep the returned session cookie,
+    and use the returned csrfToken as X-CSRF-TOKEN for POST requests. Signed
+    initData and bot tokens are supplied by the MAX test environment and must
+    not be committed in this repository.
+  method: POST
+  path: /auth/max
+  request_body: { initData: signed MAX launch data }
+  expected_status_codes: [200]
+  session_cookie: umka_session
+  csrf_response_field: csrfToken
+test_data:
+  file: tests/fixtures/housing-pilot.json
+  format: application/json
+  synthetic: true
+required_checks:
+  - id: resident-house-list
+    method: GET
+    path: /my/houses
+    parameters:
+      headers: { Accept: application/json }
+      query: {}
+      path: {}
+      body: null
+    user_role: resident
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        houses: array
+        houses[].id: integer
+        houses[].name: string
+        houses[].address: string
+        houses[].role: resident|dispatcher
+  - id: resident-incident-summary
+    method: GET
+    path: /houses/{house}/incidents
+    parameters:
+      headers: { Accept: application/json }
+      query: {}
+      path:
+        house: id from demo_resident house list
+      body: null
+    user_role: resident
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        incidents: array
+        incidents[].id: integer
+        incidents[].issueType: water|electricity|gas|heating
+        incidents[].location: string
+        incidents[].status: reported|in_progress|work_completed
+        incidents[].reportCount: integer
+        incidents[].updatedAt: RFC3339 date-time
+        incidents[].scopeResponses.total: integer
+        incidents[].recovery: object|null
+      forbidden_json_fields:
+        incidents[].reports: resident response must not contain neighbors' report text
+  - id: dispatcher-incident-details
+    method: GET
+    path: /houses/{house}/incidents
+    parameters:
+      headers: { Accept: application/json }
+      query: {}
+      path:
+        house: id from demo_dispatcher house membership
+      body: null
+    user_role: dispatcher
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        incidents[].reports: array
+        incidents[].reports[].details: string
+        incidents[].reports[].createdAt: RFC3339 date-time
+  - id: dispatcher-update-incident-work
+    method: PATCH
+    path: /houses/{house}/incidents/{incident}
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_dispatcher house membership
+        incident: id from demo data or resident incident list
+      body:
+        status: in_progress|work_completed
+        assignedTo: Аварийная служба
+        nextAction: Проверить восстановление услуги
+        nextUpdateAt: RFC3339 date-time
+    user_role: dispatcher
+    expected_status_codes: [200]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        incident.status: in_progress|work_completed
+        incident.assignedTo: string
+        incident.nextAction: string
+        incident.recovery.round: integer
+  - id: resident-incident-response
+    method: POST
+    path: /houses/{house}/incidents/{incident}/responses
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_resident house list
+        incident: id of a current active or completed incident
+      body:
+        stage: scope|recovery
+        answer: problem_present|service_working|cannot_check|restored|problem_remains
+    user_role: resident
+    expected_status_codes: [200, 201]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        response.stage: scope|recovery
+        response.answer: string
+        response.round: integer
+  - id: resident-create-incident-message
+    method: POST
+    path: /houses/{house}/incidents
+    parameters:
+      headers:
+        Accept: application/json
+        Content-Type: application/json
+        X-CSRF-TOKEN: csrf token from authenticated session
+      query: {}
+      path:
+        house: id from demo_resident house list
+      body:
+        issueType: water
+        location: Подъезд 2
+        details: Контрольное сообщение тестового сценария, проблема сохраняется.
+        incidentId: id of the active incident to join; omit to create a new incident
+    user_role: resident
+    expected_status_codes: [201]
+    expected_response:
+      content_type: application/json
+      json_fields:
+        incident.id: integer
+        incident.issueType: water|electricity|gas|heating
+        incident.location: string
+        incident.status: reported|in_progress
+        incident.reportCount: integer
+        incident.updatedAt: RFC3339 date-time
