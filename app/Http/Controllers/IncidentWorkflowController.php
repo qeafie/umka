@@ -150,6 +150,10 @@ class IncidentWorkflowController extends Controller
                 ['answer' => $data->answer],
             );
 
+            if (! $answerChanged) {
+                $savedResponse->touch();
+            }
+
             if ($answerChanged) {
                 $lockedIncident->activities()->create([
                     'user_id' => $request->user()->id,

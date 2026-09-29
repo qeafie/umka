@@ -472,9 +472,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head :title="appName" />
-
     <main class="app-shell">
+        <Head :title="appName" />
         <header class="topbar">
             <button class="brand" type="button" aria-label="На главную страницу" @click="goHome">
                 <img class="brand-mark" src="/brand/umka-mark.svg" alt="" aria-hidden="true">
@@ -628,19 +627,23 @@ onBeforeUnmount(() => {
                                 <div class="field"><label :for="`work-status-${incident.id}`">Статус</label><select :id="`work-status-${incident.id}`" v-model="incidentWork[incident.id].status" name="status"><option value="in_progress">В работе</option><option value="work_completed">Работы завершены</option></select></div>
                                 <button class="button button-secondary" :data-test="`save-work-${incident.id}`" type="submit" :disabled="isSavingWorkflow"><span v-if="isSavingWorkflow" class="spinner" aria-hidden="true"></span>{{ isSavingWorkflow ? 'Сохраняем…' : 'Сохранить план' }}</button>
                             </form>
-                            <div v-else-if="incident.status === 'reported' || incident.status === 'in_progress'" class="incident-vote" :data-test="`scope-check-${incident.id}`">
-                                <strong>Проблема сохраняется?</strong>
+                            <div v-if="incident.status === 'reported' || incident.status === 'in_progress'" class="incident-vote" :data-test="`scope-check-${incident.id}`">
+                                <strong>Проверка состояния услуги</strong>
                                 <span>Свежих ответов: {{ incident.scopeResponses?.total ?? 0 }} · устарели и требуют проверки: {{ incident.scopeResponses?.staleResponses ?? 0 }}</span>
+                                <span>Проблема есть: {{ incident.scopeResponses?.problemPresent ?? 0 }} · Услуга работает: {{ incident.scopeResponses?.serviceWorking ?? 0 }} · Не могут проверить: {{ incident.scopeResponses?.cannotCheck ?? 0 }}</span>
                                 <span v-if="incident.myScopeResponse">Ваш ответ: {{ incident.myScopeResponse === 'problem_present' ? 'проблема есть' : incident.myScopeResponse === 'service_working' ? 'услуга работает' : 'не удалось проверить' }}<template v-if="!incident.myScopeResponseIsFresh"> · обновите ответ, чтобы он учитывался как текущий</template></span>
-                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'problem_present')">Да, проблема есть</button>
-                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'service_working')">У меня всё работает</button>
-                                <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'cannot_check')">Не могу проверить</button>
+                                <template v-if="selectedHouse.role === 'resident'">
+                                    <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'problem_present')">Да, проблема есть</button>
+                                    <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'service_working')">У меня всё работает</button>
+                                    <button type="button" class="text-button" @click="answerIncident(incident, 'scope', 'cannot_check')">Не могу проверить</button>
+                                </template>
                                 <small>Ответы показываются диспетчеру только общим числом.</small>
                             </div>
                             <div v-else-if="incident.status === 'work_completed'" class="incident-vote" :data-test="`recovery-check-${incident.id}`">
-                                <strong>Работы завершены. У вас восстановилась услуга?</strong>
+                                <strong>Работы завершены. Проверка восстановления</strong>
                                 <span>Свежие подтверждения: {{ incident.recovery?.restored ?? 0 }} · проблема сохраняется: {{ incident.recovery?.problemRemains ?? 0 }} · ждём свежих ответов: {{ incident.recovery?.noResponse ?? 0 }} · устарели: {{ incident.recovery?.staleResponses ?? 0 }}</span>
-                                <template v-if="incident.canConfirmRecovery">
+                                <span>Не могут проверить: {{ incident.recovery?.cannotCheck ?? 0 }}</span>
+                                <template v-if="selectedHouse.role === 'resident' && incident.canConfirmRecovery">
                                     <span v-if="incident.myRecoveryResponse">Ваш ответ {{ incident.myRecoveryResponseIsFresh ? 'учитывается' : 'устарел — подтвердите состояние снова' }}</span>
                                     <button class="text-button" type="button" :data-test="`confirm-restored-${incident.id}`" @click="answerIncident(incident, 'recovery', 'restored')">Да, всё восстановилось</button>
                                     <button class="text-button" type="button" @click="answerIncident(incident, 'recovery', 'problem_remains')">Нет, проблема сохраняется</button>
