@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['incident_id', 'user_id', 'stage', 'round', 'answer'])]
+#[Fillable(['incident_id', 'user_id', 'stage', 'round', 'answer', 'entrance', 'floor'])]
 class IncidentResponse extends Model
 {
     /** @use HasFactory<IncidentResponseFactory> */

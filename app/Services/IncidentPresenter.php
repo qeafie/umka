@@ -7,6 +7,8 @@ use Illuminate\Support\Carbon;
 
 class IncidentPresenter
 {
+    public function __construct(private IncidentHouseMap $houseMap) {}
+
     /** @return array<string, mixed> */
     public function present(Incident $incident, int $userId, bool $includeReports): array
     {
@@ -44,6 +46,7 @@ class IncidentPresenter
             'recovery' => null,
             'myRecoveryResponse' => null,
             'canConfirmRecovery' => false,
+            'houseMap' => $this->houseMap->present($incident),
         ];
 
         if ($incident->status === 'work_completed') {

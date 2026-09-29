@@ -94,7 +94,7 @@ class IncidentWorkflowController extends Controller
         abort_if($membership === null || $membership->pivot->role !== 'resident', 403);
         abort_unless($house->incidents()->whereKey($incident->id)->exists(), 404);
 
-        $response = DB::transaction(function () use ($data, $house, $incident, $request): array {
+        $response = DB::transaction(function () use ($data, $house, $incident, $request, $membership): array {
             $lockedIncident = $house->incidents()
                 ->whereKey($incident->id)
                 ->lockForUpdate()
@@ -147,7 +147,7 @@ class IncidentWorkflowController extends Controller
                     'stage' => $data->stage,
                     'round' => $round,
                 ],
-                ['answer' => $data->answer],
+                ['answer' => $data->answer, 'entrance' => $membership->pivot->entrance, 'floor' => $membership->pivot->floor],
             );
 
             if (! $answerChanged) {

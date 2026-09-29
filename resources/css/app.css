@@ -215,3 +215,38 @@ h1 { max-width: 820px; margin-bottom: 13px; font-size: clamp(36px, 6vw, 66px); l
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.house-map { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.house-map-heading h4 { margin: 0 0 4px; font-size: 20px; }
+.house-map-heading p { color: var(--muted); font-size: 14px; }
+.house-map-entrances { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 18px; margin: 16px 0; }
+.house-map-entrance { display: flex; flex-direction: column; gap: 7px; }
+.house-map-entrance h5, .house-map-details h5 { margin: 0 0 8px; font-size: 16px; }
+.house-map-floor { display: flex; flex-direction: column; gap: 4px; min-height: 66px; padding: 10px 12px; border: 1px solid #c8d1dc; border-left-width: 5px; border-radius: 10px; background: #f1f4f8; color: var(--text); text-align: left; cursor: pointer; }
+.house-map-floor span { font-size: 13px; line-height: 1.35; }
+.house-map-floor[aria-pressed="true"] { outline: 3px solid var(--blue); outline-offset: 2px; }
+.house-map-floor.map-problem { background: #fff0eb; border-left-color: #c64c32; }
+.house-map-floor.map-mixed { background: #fff2d9; border-left-color: #af761c; }
+.house-map-floor.map-confirmed { background: #eaf4e2; border-left-color: #54812b; }
+.house-map-floor.map-partial { background: #eaf1ff; border-left-color: #416fd2; }
+.house-map-details { margin-top: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.house-map-details dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px 20px; margin: 0 0 12px; font-size: 15px; }
+.house-map-details dl div { display: flex; justify-content: space-between; gap: 10px; }
+.house-map-details dd { margin: 0; font-weight: 750; }
+.house-map-details .form-note { margin-bottom: 0; }
+.house-settings { margin: 20px 0; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.house-settings h2 { font-size: 24px; }
+.house-settings h3 { margin: 26px 0 14px; font-size: 20px; }
+.house-settings fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.house-settings legend { margin-bottom: 12px; font-weight: 750; }
+.house-layout-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 12px; }
+.house-layout-row > .text-button { min-height: 52px; }
+.house-layout-row .field { font-size: 15px; }
+.house-layout-form { margin-top: 20px; }
+.member-location-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 620px) {
+    .house-settings { padding: 15px; }
+    .house-layout-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .house-layout-row > button { grid-column: 1 / -1; }
+    .house-map-details { padding: 14px; }
+}

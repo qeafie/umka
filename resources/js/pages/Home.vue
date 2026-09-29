@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import IncidentHouseMap from '../components/IncidentHouseMap.vue';
+import HouseMapSettings from '../components/HouseMapSettings.vue';
 
 const props = defineProps({
     appName: { type: String, required: true },
@@ -28,6 +30,7 @@ const meterForm = reactive({ name: '', service: 'cold_water', serialNumber: '' }
 const houses = ref([]);
 const houseIncidents = ref([]);
 const selectedHouse = ref(null);
+const showHouseSettings = ref(false);
 const isLoadingIncidents = ref(false);
 const isSavingIncident = ref(false);
 const incidentFeedback = ref('');
@@ -213,6 +216,7 @@ async function saveReading(meter) {
 
 async function openIncidents() {
     activeView.value = 'incidents';
+    showHouseSettings.value = false;
     incidentFeedback.value = '';
     incidentError.value = '';
     incidentErrors.value = {};
@@ -281,6 +285,11 @@ async function loadHouseIncidents() {
     } finally {
         isLoadingIncidents.value = false;
     }
+}
+
+async function updateHouseLayout(layout) {
+    selectedHouse.value.layout = layout;
+    await loadHouseIncidents();
 }
 
 async function saveIncidentWork(incident) {
@@ -583,6 +592,13 @@ onBeforeUnmount(() => {
                     <span>{{ selectedHouse.address }}</span>
                 </div>
 
+                <template v-if="selectedHouse?.role === 'house_admin'">
+                    <button class="text-button" type="button" data-test="configure-house-map" :aria-expanded="showHouseSettings" @click="showHouseSettings = !showHouseSettings">
+                        {{ showHouseSettings ? 'Скрыть настройки схемы' : 'Настроить схему дома' }}
+                    </button>
+                    <HouseMapSettings v-if="showHouseSettings" :key="selectedHouse.id" :house="selectedHouse" @updated="updateHouseLayout" />
+                </template>
+
                 <p v-if="incidentError" class="meter-feedback meter-feedback-error" role="alert" data-test="incident-error">
                     {{ incidentError }}
                 </p>
@@ -651,6 +667,7 @@ onBeforeUnmount(() => {
                                 </template>
                                 <small v-else>Подтвердить восстановление могут жители, сообщившие об этой проблеме.</small>
                             </div>
+                            <IncidentHouseMap v-if="incident.houseMap" :map="incident.houseMap" />
                             <button
                                 v-if="incident.status === 'reported' || incident.status === 'in_progress'"
                                 class="text-button"

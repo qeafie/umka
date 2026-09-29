@@ -299,6 +299,27 @@ describe('Home', () => {
         expect(summary.findAll('button')).toHaveLength(0);
     });
 
+    it.each(['resident', 'dispatcher', 'house_admin'])('shows the house map and limits settings to house administrators (%s)', async (role) => {
+        const houseMap = {
+            stage: 'scope',
+            areas: [{ entrance: 2, floor: 3, participants: 1, problem: 1, working: 0, cannotCheck: 0, noResponse: 0, stale: 0, status: 'problem' }],
+            unlocated: { participants: 0 },
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url) => ({
+            ok: true,
+            json: async () => url === '/my/houses'
+                ? { houses: [{ id: 4, name: 'Дом', address: 'ул. Тестовая, 1', role, layout: [{ entrance: 2, floors: 3 }] }] }
+                : { incidents: [{ id: 9, issueType: 'water', location: 'Подъезд 2', status: 'in_progress', reportCount: 1, houseMap }] },
+        })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Участник', role } } });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="floor-2-3"]').text()).toContain('Есть проблема');
+        expect(wrapper.find('[data-test="configure-house-map"]').exists()).toBe(role === 'house_admin');
+    });
+
     it('shows recovery answers and missing confirmations to the dispatcher', async () => {
         const incident = {
             id: 9, issueType: 'water', location: 'Подъезд 2', status: 'work_completed', reportCount: 10,

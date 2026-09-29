@@ -14,6 +14,10 @@ Route::get('/', HomeController::class)->name('home');
 Route::post('/appeals/preview', HousingRequestDraftController::class)->name('appeals.preview');
 Route::post('/auth/max', MaxSessionController::class)->middleware('throttle:10,1')->name('auth.max');
 Route::middleware('auth')->group(function () {
+    Route::put('/admin/houses/{house}/layout', [HouseAccessController::class, 'updateLayout'])
+        ->whereNumber('house')->name('admin.houses.layout.update');
+    Route::put('/admin/houses/{house}/members/{member}/location', [HouseAccessController::class, 'updateLocation'])
+        ->whereNumber(['house', 'member'])->name('admin.houses.members.location.update');
     Route::get('/admin/houses/{house}/members', [HouseAccessController::class, 'index'])
         ->whereNumber('house')->name('admin.houses.members.index');
     Route::put('/admin/houses/{house}/members/{member}', [HouseAccessController::class, 'update'])
