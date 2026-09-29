@@ -254,7 +254,7 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, role, apartment]
+                      required: [id, name, role, apartment, isCurrentUser]
                       properties:
                         id: { type: integer }
                         name: { type: string }
@@ -262,6 +262,9 @@ paths:
                         apartment: { type: [string, 'null'] }
                         entrance: { type: [integer, 'null'] }
                         floor: { type: [integer, 'null'] }
+                        isCurrentUser:
+                          type: boolean
+                          description: Участник является текущим администратором; собственную роль и доступ менять нельзя.
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/houses/{house}/members/{member}:
@@ -277,6 +280,7 @@ paths:
     put:
       tags: [House access]
       summary: Изменить роль участника в конкретном доме
+      description: Собственную роль администратора изменить нельзя. Нового администратора этим маршрутом назначить нельзя.
       security: [{ sessionCookie: [], csrfToken: [] }]
       requestBody:
         required: true

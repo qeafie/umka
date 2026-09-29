@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Head } from '@inertiajs/vue3';
 import IncidentHouseMap from '../components/IncidentHouseMap.vue';
 import HouseMapSettings from '../components/HouseMapSettings.vue';
+import HouseMemberAccess from '../components/HouseMemberAccess.vue';
 
 const props = defineProps({
     appName: { type: String, required: true },
@@ -31,6 +32,7 @@ const houses = ref([]);
 const houseIncidents = ref([]);
 const selectedHouse = ref(null);
 const showHouseSettings = ref(false);
+const showHouseAccess = ref(false);
 const isLoadingIncidents = ref(false);
 const isSavingIncident = ref(false);
 const incidentFeedback = ref('');
@@ -217,6 +219,7 @@ async function saveReading(meter) {
 async function openIncidents() {
     activeView.value = 'incidents';
     showHouseSettings.value = false;
+    showHouseAccess.value = false;
     incidentFeedback.value = '';
     incidentError.value = '';
     incidentErrors.value = {};
@@ -593,10 +596,16 @@ onBeforeUnmount(() => {
                 </div>
 
                 <template v-if="selectedHouse?.role === 'house_admin'">
-                    <button class="text-button" type="button" data-test="configure-house-map" :aria-expanded="showHouseSettings" @click="showHouseSettings = !showHouseSettings">
-                        {{ showHouseSettings ? 'Скрыть настройки схемы' : 'Настроить схему дома' }}
-                    </button>
+                    <div class="house-admin-actions">
+                        <button class="text-button" type="button" data-test="configure-house-map" :aria-expanded="showHouseSettings" @click="showHouseSettings = !showHouseSettings; showHouseAccess = false">
+                            {{ showHouseSettings ? 'Скрыть настройки схемы' : 'Настроить схему дома' }}
+                        </button>
+                        <button class="text-button" type="button" data-test="manage-house-members" :aria-expanded="showHouseAccess" @click="showHouseAccess = !showHouseAccess; showHouseSettings = false">
+                            {{ showHouseAccess ? 'Скрыть участников' : 'Управлять участниками' }}
+                        </button>
+                    </div>
                     <HouseMapSettings v-if="showHouseSettings" :key="selectedHouse.id" :house="selectedHouse" @updated="updateHouseLayout" />
+                    <HouseMemberAccess v-if="showHouseAccess" :key="selectedHouse.id" :house="selectedHouse" @updated="loadHouseIncidents" />
                 </template>
 
                 <p v-if="incidentError" class="meter-feedback meter-feedback-error" role="alert" data-test="incident-error">
