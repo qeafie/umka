@@ -148,13 +148,89 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, name, address, role]
+                      required: [id, name, address, role, layout]
                       properties:
                         id: { type: integer }
                         name: { type: string }
                         address: { type: string }
+                        layout: { $ref: '#/components/schemas/HouseLayout' }
                         role: { type: string, enum: [resident, dispatcher, moderator, house_admin] }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/houses/{house}/layout:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    put:
+      tags: [House access]
+      summary: Настроить подъезды и этажи дома
+      description: Доступно только house_admin. Нельзя удалить этаж с привязанными участниками.
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [layout]
+              properties:
+                layout: { $ref: '#/components/schemas/HouseLayout' }
+      responses:
+        '200':
+          description: Схема сохранена, подъезды отсортированы по номеру.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  layout: { $ref: '#/components/schemas/HouseLayout' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /admin/houses/{house}/members/{member}/location:
+    parameters:
+      - name: house
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+      - name: member
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    put:
+      tags: [House access]
+      summary: Привязать участника к подъезду и этажу
+      description: Доступно только house_admin. Оба поля null снимают привязку. Смена роли не выполняется.
+      security: [{ sessionCookie: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entrance, floor]
+              properties:
+                entrance: { type: [integer, 'null'], minimum: 1, maximum: 99 }
+                floor: { type: [integer, 'null'], minimum: 1, maximum: 60 }
+      responses:
+        '200':
+          description: Привязка записана в журнал. Старый ответ не подтверждает состояние нового этажа.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member:
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      entrance: { type: [integer, 'null'] }
+                      floor: { type: [integer, 'null'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Участник не состоит в доме. }
+        '422': { $ref: '#/components/responses/ValidationError' }
   /admin/houses/{house}/members:
     parameters:
       - name: house
@@ -184,6 +260,8 @@ paths:
                         name: { type: string }
                         role: { type: string, enum: [resident, dispatcher, moderator, house_admin] }
                         apartment: { type: [string, 'null'] }
+                        entrance: { type: [integer, 'null'] }
+                        floor: { type: [integer, 'null'] }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/houses/{house}/members/{member}:
@@ -413,9 +491,34 @@ components:
       name: X-CSRF-TOKEN
       description: Токен со страницы приложения или из успешного ответа /auth/max.
   schemas:
+    HouseLayout:
+      type: array
+      maxItems: 20
+      items:
+        type: object
+        required: [entrance, floors]
+        additionalProperties: false
+        properties:
+          entrance: { type: integer, minimum: 1, maximum: 99, description: Уникальный номер подъезда. }
+          floors: { type: integer, minimum: 1, maximum: 60 }
+    HouseMapArea:
+      type: object
+      required: [entrance, floor, participants, problem, working, cannotCheck, noResponse, stale, lastCheckedAt, status]
+      description: Сводка ответов участников без имён и квартир. participants считает аккаунты, а не все квартиры этажа.
+      properties:
+        entrance: { type: [integer, 'null'] }
+        floor: { type: [integer, 'null'] }
+        participants: { type: integer, minimum: 0 }
+        problem: { type: integer, minimum: 0 }
+        working: { type: integer, minimum: 0 }
+        cannotCheck: { type: integer, minimum: 0 }
+        noResponse: { type: integer, minimum: 0, description: Нет свежего ответа для текущего места участника. }
+        stale: { type: integer, minimum: 0, description: Истёк срок ответа или изменилась привязка участника; входит в noResponse. }
+        lastCheckedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [problem, mixed, confirmed, partial, unknown] }
     Incident:
       type: object
-      required: [id, issueType, location, status, reportCount, updatedAt, scopeResponses, recovery]
+      required: [id, issueType, location, status, reportCount, updatedAt, scopeResponses, recovery, houseMap]
       properties:
         id: { type: integer }
         issueType: { type: string, enum: [water, electricity, gas, heating] }
@@ -427,6 +530,15 @@ components:
         nextAction: { type: [string, 'null'] }
         nextUpdateAt: { type: [string, 'null'], format: date-time }
         workCompletedAt: { type: [string, 'null'], format: date-time }
+        houseMap:
+          type: object
+          required: [stage, areas, unlocated]
+          properties:
+            stage: { type: string, enum: [scope, recovery] }
+            areas:
+              type: array
+              items: { $ref: '#/components/schemas/HouseMapArea' }
+            unlocated: { $ref: '#/components/schemas/HouseMapArea' }
         scopeResponses:
           type: object
           properties:

@@ -128,6 +128,55 @@ class IncidentWorkflowTest extends TestCase
             ->assertJsonPath('incidents.0.myRecoveryResponseIsFresh', false);
     }
 
+    public function test_repeating_the_same_scope_answer_refreshes_it_without_counting_twice(): void
+    {
+        $this->freezeTime();
+        [$house, $resident] = $this->makeHouseWithMembers();
+        $incident = $this->makeIncident($house, 'in_progress');
+        $url = "/houses/{$house->id}/incidents/{$incident->id}/responses";
+        $answer = ['stage' => 'scope', 'answer' => 'problem_present'];
+        $createdAt = $this->actingAs($resident)->postJson($url, $answer)
+            ->assertCreated()->json('response.createdAt');
+        $this->travel(25)->hours();
+
+        $this->postJson($url, $answer)->assertOk()
+            ->assertJsonPath('response.createdAt', $createdAt)
+            ->assertJsonPath('response.updatedAt', now()->toIso8601String());
+
+        $this->getJson("/houses/{$house->id}/incidents")->assertOk()
+            ->assertJsonPath('incidents.0.scopeResponses.problemPresent', 1)
+            ->assertJsonPath('incidents.0.scopeResponses.total', 1)
+            ->assertJsonPath('incidents.0.scopeResponses.staleResponses', 0)
+            ->assertJsonPath('incidents.0.myScopeResponseIsFresh', true);
+        $this->assertDatabaseCount('incident_responses', 1);
+        $this->assertDatabaseCount('incident_activities', 1);
+    }
+
+    public function test_repeating_the_same_recovery_answer_refreshes_the_current_round(): void
+    {
+        $this->freezeTime();
+        [$house, $resident] = $this->makeHouseWithMembers();
+        $incident = $this->makeIncident($house, 'work_completed');
+        $incident->update(['recovery_round' => 1]);
+        $this->addReport($incident, $resident, 'Нет горячей воды.');
+        $url = "/houses/{$house->id}/incidents/{$incident->id}/responses";
+        $answer = ['stage' => 'recovery', 'answer' => 'restored'];
+        $this->actingAs($resident)->postJson($url, $answer)->assertCreated();
+        $this->travel(25)->hours();
+
+        $this->postJson($url, $answer)->assertOk()
+            ->assertJsonPath('response.round', 1)
+            ->assertJsonPath('response.updatedAt', now()->toIso8601String());
+
+        $this->getJson("/houses/{$house->id}/incidents")->assertOk()
+            ->assertJsonPath('incidents.0.recovery.restored', 1)
+            ->assertJsonPath('incidents.0.recovery.noResponse', 0)
+            ->assertJsonPath('incidents.0.recovery.staleResponses', 0)
+            ->assertJsonPath('incidents.0.myRecoveryResponseIsFresh', true);
+        $this->assertDatabaseCount('incident_responses', 1);
+        $this->assertDatabaseCount('incident_activities', 1);
+    }
+
     public function test_dispatcher_completion_starts_recovery_check_and_tracks_missing_answers(): void
     {
         [$house, $resident, $dispatcher, $neighbor] = $this->makeHouseWithMembers();

@@ -2,7 +2,8 @@
   "description": "Synthetic data for local and API workflow checks. The addresses, users, readings and incident are fictional.",
   "house": {
     "name": "Демонстрационный дом",
-    "address": "Казань, улица Примерная, дом 10"
+    "address": "Казань, улица Примерная, дом 10",
+    "layout": [{ "entrance": 1, "floors": 5 }, { "entrance": 2, "floors": 5 }]
   },
   "members": [
     {
@@ -12,6 +13,8 @@
       "email": "umka.demo.resident@example.test",
       "role": "resident",
       "apartment": "24",
+      "entrance": 2,
+      "floor": 2,
       "report": "С утра нет горячей воды."
     },
     {
@@ -21,6 +24,8 @@
       "email": "umka.demo.neighbor@example.test",
       "role": "resident",
       "apartment": "38",
+      "entrance": 2,
+      "floor": 4,
       "report": "В квартире тоже нет горячей воды."
     },
     {

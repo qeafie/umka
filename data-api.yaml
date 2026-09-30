@@ -83,6 +83,9 @@ required_checks:
         incidents[].scopeResponses.staleResponses: integer
         incidents[].responseFreshnessHours: integer
         incidents[].recovery: object|null
+        incidents[].houseMap.stage: scope|recovery
+        incidents[].houseMap.areas: array
+        incidents[].houseMap.unlocated: object
       forbidden_json_fields:
         incidents[].reports: resident response must not contain neighbors' report text
   - id: dispatcher-incident-details

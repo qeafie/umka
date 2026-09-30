@@ -51,4 +51,15 @@ class DemoHousingDataSeederTest extends TestCase
         $this->assertSame(1, Meter::query()->count());
         $this->assertSame(1, MeterReading::query()->count());
     }
+
+    public function test_demo_house_has_explicit_entrances_and_resident_floors_for_the_map(): void
+    {
+        $this->seed(DemoHousingDataSeeder::class);
+        $resident = User::query()->where('max_user_id', config('demo.resident_max_user_id'))->firstOrFail();
+
+        $this->actingAs($resident)->getJson('/my/houses')->assertOk()
+            ->assertJsonPath('houses.0.layout', [['entrance' => 1, 'floors' => 5], ['entrance' => 2, 'floors' => 5]]);
+
+        $this->assertDatabaseHas('house_memberships', ['user_id' => $resident->id, 'entrance' => 2, 'floor' => 2]);
+    }
 }

@@ -26,7 +26,7 @@ class DemoHousingDataSeeder extends Seeder
         DB::transaction(function () use ($fixture): void {
             $house = House::query()->updateOrCreate(
                 ['address' => $fixture['house']['address']],
-                ['name' => $fixture['house']['name']],
+                ['name' => $fixture['house']['name'], 'layout' => $fixture['house']['layout']],
             );
             $members = [];
 
@@ -47,6 +47,8 @@ class DemoHousingDataSeeder extends Seeder
                     [
                         'role' => $member['role'],
                         'apartment' => $member['apartment'],
+                        'entrance' => $member['entrance'] ?? null,
+                        'floor' => $member['floor'] ?? null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ],

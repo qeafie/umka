@@ -17,12 +17,13 @@ class HousingIncidentController extends Controller
     {
         $houses = $request->user()->houses()
             ->orderBy('houses.address')
-            ->get(['houses.id', 'houses.name', 'houses.address'])
+            ->get(['houses.id', 'houses.name', 'houses.address', 'houses.layout'])
             ->map(fn (House $house): array => [
                 'id' => $house->id,
                 'name' => $house->name,
                 'address' => $house->address,
                 'role' => $house->pivot->role,
+                'layout' => $house->layout ?? [],
             ]);
 
         return response()->json(['houses' => $houses]);

@@ -274,6 +274,78 @@ describe('Home', () => {
         expect(wrapper.get('[data-test="incident-feedback"]').text()).toContain('Обновление сохранено');
     });
 
+    it('shows scope answers to the dispatcher alongside the work form', async () => {
+        const incident = {
+            id: 9, issueType: 'water', location: 'Подъезд 2', status: 'in_progress', reportCount: 2,
+            scopeResponses: { problemPresent: 2, serviceWorking: 3, cannotCheck: 1, total: 6, staleResponses: 4 },
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url) => ({
+            ok: true,
+            json: async () => url === '/my/houses'
+                ? { houses: [{ id: 4, name: 'Дом', address: 'ул. Тестовая, 1', role: 'dispatcher' }] }
+                : { incidents: [incident] },
+        })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Диспетчер', role: 'dispatcher' } } });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="dispatcher-controls-9"]').exists()).toBe(true);
+        const summary = wrapper.get('[data-test="scope-check-9"]');
+        expect(summary.text()).toContain('Проблема есть: 2');
+        expect(summary.text()).toContain('Услуга работает: 3');
+        expect(summary.text()).toContain('Не могут проверить: 1');
+        expect(summary.text()).toContain('устарели и требуют проверки: 4');
+        expect(summary.findAll('button')).toHaveLength(0);
+    });
+
+    it.each(['resident', 'dispatcher', 'house_admin'])('shows the house map and limits settings to house administrators (%s)', async (role) => {
+        const houseMap = {
+            stage: 'scope',
+            areas: [{ entrance: 2, floor: 3, participants: 1, problem: 1, working: 0, cannotCheck: 0, noResponse: 0, stale: 0, status: 'problem' }],
+            unlocated: { participants: 0 },
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url) => ({
+            ok: true,
+            json: async () => url === '/my/houses'
+                ? { houses: [{ id: 4, name: 'Дом', address: 'ул. Тестовая, 1', role, layout: [{ entrance: 2, floors: 3 }] }] }
+                : { incidents: [{ id: 9, issueType: 'water', location: 'Подъезд 2', status: 'in_progress', reportCount: 1, houseMap }] },
+        })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Участник', role } } });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="floor-2-3"]').text()).toContain('Есть проблема');
+        expect(wrapper.find('[data-test="configure-house-map"]').exists()).toBe(role === 'house_admin');
+    });
+
+    it('shows recovery answers and missing confirmations to the dispatcher', async () => {
+        const incident = {
+            id: 9, issueType: 'water', location: 'Подъезд 2', status: 'work_completed', reportCount: 10,
+            recovery: { round: 1, totalReports: 10, restored: 6, problemRemains: 2, cannotCheck: 1, noResponse: 1, staleResponses: 1 },
+            canConfirmRecovery: false,
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url) => ({
+            ok: true,
+            json: async () => url === '/my/houses'
+                ? { houses: [{ id: 4, name: 'Дом', address: 'ул. Тестовая, 1', role: 'dispatcher' }] }
+                : { incidents: [incident] },
+        })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Диспетчер', role: 'dispatcher' } } });
+
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="dispatcher-controls-9"]').exists()).toBe(true);
+        const summary = wrapper.get('[data-test="recovery-check-9"]');
+        expect(summary.text()).toContain('Свежие подтверждения: 6');
+        expect(summary.text()).toContain('проблема сохраняется: 2');
+        expect(summary.text()).toContain('Не могут проверить: 1');
+        expect(summary.text()).toContain('ждём свежих ответов: 1');
+        expect(summary.findAll('button')).toHaveLength(0);
+    });
+
     it('lets a resident answer a service check and recovery check', async () => {
         const incident = {
             id: 9, issueType: 'water', location: 'Подъезд 2', status: 'work_completed', reportCount: 1,
