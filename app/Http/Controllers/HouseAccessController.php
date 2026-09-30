@@ -26,6 +26,7 @@ class HouseAccessController extends Controller
                 'apartment' => $user->pivot->apartment,
                 'entrance' => $user->pivot->entrance,
                 'floor' => $user->pivot->floor,
+                'isCurrentUser' => $user->is($request->user()),
             ]);
 
         return response()->json(['members' => $members]);
@@ -34,6 +35,10 @@ class HouseAccessController extends Controller
     public function update(HouseMemberRoleData $data, House $house, User $member, Request $request): JsonResponse
     {
         $this->authorizeAdministrator($house, $request->user());
+
+        if ($member->is($request->user())) {
+            throw ValidationException::withMessages(['member' => ['Нельзя изменить собственную роль администратора.']]);
+        }
 
         $result = DB::transaction(function () use ($data, $house, $member, $request): array {
             $pivot = $house->members()->whereKey($member->id)->lockForUpdate()->first();

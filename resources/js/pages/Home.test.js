@@ -299,7 +299,7 @@ describe('Home', () => {
         expect(summary.findAll('button')).toHaveLength(0);
     });
 
-    it.each(['resident', 'dispatcher', 'house_admin'])('shows the house map and limits settings to house administrators (%s)', async (role) => {
+    it.each(['resident', 'dispatcher', 'moderator', 'house_admin'])('shows the house map and limits settings to house administrators (%s)', async (role) => {
         const houseMap = {
             stage: 'scope',
             areas: [{ entrance: 2, floor: 3, participants: 1, problem: 1, working: 0, cannotCheck: 0, noResponse: 0, stale: 0, status: 'problem' }],
@@ -318,6 +318,31 @@ describe('Home', () => {
 
         expect(wrapper.get('[data-test="floor-2-3"]').text()).toContain('Есть проблема');
         expect(wrapper.find('[data-test="configure-house-map"]').exists()).toBe(role === 'house_admin');
+        expect(wrapper.find('[data-test="manage-house-members"]').exists()).toBe(role === 'house_admin');
+    });
+
+    it('opens member management for the house administrator and refreshes incidents after a role change', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url, options = {}) => ({
+            ok: true,
+            json: async () => {
+                if (url === '/my/houses') return { houses: [{ id: 4, name: 'Дом', role: 'house_admin' }] };
+                if (options.method === 'PUT') return { member: { id: 7, role: 'dispatcher' } };
+                if (url === '/admin/houses/4/members') return { members: [{ id: 7, name: 'Анна', role: 'resident', isCurrentUser: false }] };
+                return { incidents: [] };
+            },
+        })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Администратор' } } });
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[data-test="manage-house-members"]').trigger('click');
+        await flushPromises();
+
+        await wrapper.get('[data-test="member-access-7"] select').setValue('dispatcher');
+        await wrapper.get('[data-test="member-access-7"] form').trigger('submit');
+        await flushPromises();
+
+        expect(fetch.mock.calls.filter(([url]) => url === '/houses/4/incidents')).toHaveLength(2);
+        expect(wrapper.text()).toContain('Роль сохранена');
     });
 
     it('shows recovery answers and missing confirmations to the dispatcher', async () => {

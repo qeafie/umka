@@ -173,6 +173,7 @@ required_checks:
         members[].id: integer
         members[].name: string
         members[].role: resident|dispatcher|moderator|house_admin
+        members[].isCurrentUser: boolean
   - id: house-admin-change-member-role
     method: PUT
     path: /admin/houses/{house}/members/{member}
