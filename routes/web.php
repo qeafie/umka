@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HouseAccessController;
+use App\Http\Controllers\HouseInvitationController;
 use App\Http\Controllers\HousingIncidentController;
 use App\Http\Controllers\HousingRequestDraftController;
 use App\Http\Controllers\IncidentWorkflowController;
@@ -14,6 +15,11 @@ Route::get('/', HomeController::class)->name('home');
 Route::post('/appeals/preview', HousingRequestDraftController::class)->name('appeals.preview');
 Route::post('/auth/max', MaxSessionController::class)->middleware('throttle:10,1')->name('auth.max');
 Route::middleware('auth')->group(function () {
+    Route::get('/admin/houses/{house}/invitations', [HouseInvitationController::class, 'index'])->whereNumber('house')->name('invitations.index');
+    Route::post('/admin/houses/{house}/invitations', [HouseInvitationController::class, 'store'])->middleware('throttle:20,1')->whereNumber('house')->name('invitations.store');
+    Route::delete('/admin/houses/{house}/invitations/{invitation}', [HouseInvitationController::class, 'destroy'])->whereNumber(['house', 'invitation'])->name('invitations.destroy');
+    Route::post('/invitations/preview', [HouseInvitationController::class, 'preview'])->middleware('throttle:20,1')->name('invitations.preview');
+    Route::post('/invitations/accept', [HouseInvitationController::class, 'accept'])->middleware('throttle:20,1')->name('invitations.accept');
     Route::put('/admin/houses/{house}/layout', [HouseAccessController::class, 'updateLayout'])
         ->whereNumber('house')->name('admin.houses.layout.update');
     Route::put('/admin/houses/{house}/members/{member}/location', [HouseAccessController::class, 'updateLocation'])

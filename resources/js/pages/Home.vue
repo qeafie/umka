@@ -4,6 +4,8 @@ import { Head } from '@inertiajs/vue3';
 import IncidentHouseMap from '../components/IncidentHouseMap.vue';
 import HouseMapSettings from '../components/HouseMapSettings.vue';
 import HouseMemberAccess from '../components/HouseMemberAccess.vue';
+import JoinHouse from '../components/JoinHouse.vue';
+const invitationToken = ref('');
 
 const props = defineProps({
     appName: { type: String, required: true },
@@ -112,6 +114,11 @@ async function establishMaxSession() {
         }
 
         currentResident.value = result.user;
+        const startParam = window.WebApp?.initDataUnsafe?.start_param;
+        if (typeof startParam === 'string' && /^invite_[a-f0-9]{64}$/.test(startParam)) {
+            invitationToken.value = startParam.slice(7);
+            await openIncidents();
+        }
     } catch {
         currentResident.value = null;
     }
@@ -216,7 +223,7 @@ async function saveReading(meter) {
     }
 }
 
-async function openIncidents() {
+async function openIncidents(preferredHouse = null) {
     activeView.value = 'incidents';
     showHouseSettings.value = false;
     showHouseAccess.value = false;
@@ -241,7 +248,7 @@ async function openIncidents() {
         }
 
         houses.value = result.houses;
-        selectedHouse.value = houses.value[0] ?? null;
+        selectedHouse.value = houses.value.find((house) => house.id === preferredHouse?.id) ?? houses.value.find((house) => house.id === selectedHouse.value?.id) ?? houses.value[0] ?? null;
 
         if (!selectedHouse.value) {
             incidentError.value = 'Дом пока не привязан. Попросите представителя УК или администратора добавить вас в дом.';
@@ -254,6 +261,15 @@ async function openIncidents() {
     } finally {
         isLoadingIncidents.value = false;
     }
+}
+
+async function selectHouse(event) {
+    selectedHouse.value = houses.value.find((house) => house.id === Number(event.target.value)) ?? null;
+    showHouseSettings.value = false;
+    showHouseAccess.value = false;
+    houseIncidents.value = [];
+    Object.assign(incidentForm, { issueType: 'water', location: '', details: '', incidentId: null });
+    await loadHouseIncidents();
 }
 
 async function loadHouseIncidents() {
@@ -585,11 +601,13 @@ onBeforeUnmount(() => {
         </template>
 
         <template v-else-if="activeView === 'incidents'">
+            <JoinHouse :authenticated="!!currentResident" :initial-token="invitationToken" @joined="openIncidents" />
             <button class="back-button" type="button" @click="goHome">← На главную</button>
 
             <section class="form-panel incident-panel" aria-labelledby="incidents-page-title">
                 <p class="eyebrow">Общая картина по дому</p>
                 <h1 id="incidents-page-title">Проблемы в доме</h1>
+                <label v-if="houses.length > 1" class="field">Ваш дом<select data-test="select-house" :value="selectedHouse?.id" :disabled="isLoadingIncidents" @change="selectHouse"><option v-for="house in houses" :key="house.id" :value="house.id">{{ house.address }}</option></select></label>
                 <div v-if="selectedHouse" class="incident-house" data-test="incidents-house-title">
                     <strong>{{ selectedHouse.name }}</strong>
                     <span>{{ selectedHouse.address }}</span>

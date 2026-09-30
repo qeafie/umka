@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from './Home.vue';
+import JoinHouse from '../components/JoinHouse.vue';
 
 vi.mock('@inertiajs/vue3', () => ({
     Head: { render: () => null },
@@ -21,6 +22,20 @@ describe('Home', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
+    });
+
+    it('opens the newly joined house even when another membership sorts first', async () => {
+        const houses = [{ id: 1, name: 'Первый дом', address: 'А', role: 'resident' }, { id: 2, name: 'Новый дом', address: 'Б', role: 'resident' }];
+        vi.stubGlobal('fetch', vi.fn(async (url) => ({ ok: true, json: async () => url === '/my/houses' ? { houses } : { incidents: [] } })));
+        const wrapper = mount(Home, { props: { appName: 'Умка', emergencyGuides, resident: { name: 'Житель', role: 'resident' } } });
+        await wrapper.get('[data-test="open-incidents"]').trigger('click');
+        await flushPromises();
+        wrapper.getComponent(JoinHouse).vm.$emit('joined', { id: 2 });
+        await flushPromises();
+        expect(wrapper.get('[data-test="incidents-house-title"]').text()).toContain('Новый дом');
+        await wrapper.get('[data-test="select-house"]').setValue('1');
+        await flushPromises();
+        expect(wrapper.get('[data-test="incidents-house-title"]').text()).toContain('Первый дом');
     });
 
     it('shows the application name and the selected emergency guides', () => {
