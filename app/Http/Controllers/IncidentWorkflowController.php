@@ -7,6 +7,8 @@ use App\DTOs\IncidentWorkflowUpdateData;
 use App\Models\House;
 use App\Models\Incident;
 use App\Services\IncidentPresenter;
+use App\Services\IncidentResponses;
+use App\Services\Max\IncidentNotifications;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +79,8 @@ class IncidentWorkflowController extends Controller
                 ],
             ]);
 
+            app(IncidentNotifications::class)->workflow($lockedIncident);
+
             return $lockedIncident->loadCount('reports');
         });
 
@@ -85,95 +89,14 @@ class IncidentWorkflowController extends Controller
         ]);
     }
 
-    public function respond(IncidentResponseData $data, House $house, Incident $incident, Request $request): JsonResponse
+    public function respond(IncidentResponseData $data, House $house, Incident $incident, Request $request, IncidentResponses $responses): JsonResponse
     {
-        $membership = $house->members()
-            ->whereKey($request->user()->id)
-            ->first();
-
-        abort_if($membership === null || $membership->pivot->role !== 'resident', 403);
-        abort_unless($house->incidents()->whereKey($incident->id)->exists(), 404);
-
-        $response = DB::transaction(function () use ($data, $house, $incident, $request, $membership): array {
-            $lockedIncident = $house->incidents()
-                ->whereKey($incident->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($data->stage === 'scope') {
-                if (! in_array($lockedIncident->status, ['reported', 'in_progress'], true)) {
-                    throw ValidationException::withMessages([
-                        'stage' => ['Проверка масштаба доступна, пока проблема не отмечена выполненной.'],
-                    ]);
-                }
-
-                if (! in_array($data->answer, ['problem_present', 'service_working', 'cannot_check'], true)) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Выберите ответ о текущем состоянии услуги.'],
-                    ]);
-                }
-
-                $round = 0;
-            } else {
-                if ($lockedIncident->status !== 'work_completed') {
-                    throw ValidationException::withMessages([
-                        'stage' => ['Проверка восстановления появится после отметки о завершении работ.'],
-                    ]);
-                }
-
-                if (! in_array($data->answer, ['restored', 'problem_remains', 'cannot_check'], true)) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Выберите ответ о результате работ.'],
-                    ]);
-                }
-
-                if (! $lockedIncident->reports()->where('user_id', $request->user()->id)->exists()) {
-                    abort(403);
-                }
-
-                $round = $lockedIncident->recovery_round;
-            }
-
-            $existingResponse = $lockedIncident->responses()
-                ->where('user_id', $request->user()->id)
-                ->where('stage', $data->stage)
-                ->where('round', $round)
-                ->first();
-            $answerChanged = $existingResponse?->answer !== $data->answer;
-
-            $savedResponse = $lockedIncident->responses()->updateOrCreate(
-                [
-                    'user_id' => $request->user()->id,
-                    'stage' => $data->stage,
-                    'round' => $round,
-                ],
-                ['answer' => $data->answer, 'entrance' => $membership->pivot->entrance, 'floor' => $membership->pivot->floor],
-            );
-
-            if (! $answerChanged) {
-                $savedResponse->touch();
-            }
-
-            if ($answerChanged) {
-                $lockedIncident->activities()->create([
-                    'user_id' => $request->user()->id,
-                    'event_type' => $data->stage === 'scope' ? 'scope_response' : 'recovery_response',
-                    'payload' => ['stage' => $data->stage, 'round' => $round, 'answer' => $data->answer],
-                ]);
-            }
-
-            return [$savedResponse, $existingResponse === null];
-        });
-
-        [$savedResponse, $created] = $response;
+        [$savedResponse, $created] = $responses->record($house, $incident, $request->user(), $data->stage, $data->answer);
 
         return response()->json([
             'response' => [
-                'stage' => $savedResponse->stage,
-                'answer' => $savedResponse->answer,
-                'round' => $savedResponse->round,
-                'createdAt' => $savedResponse->created_at->toIso8601String(),
-                'updatedAt' => $savedResponse->updated_at->toIso8601String(),
+                'stage' => $savedResponse->stage, 'answer' => $savedResponse->answer, 'round' => $savedResponse->round,
+                'createdAt' => $savedResponse->created_at->toIso8601String(), 'updatedAt' => $savedResponse->updated_at->toIso8601String(),
             ],
         ], $created ? 201 : 200);
     }

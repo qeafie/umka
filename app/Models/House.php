@@ -23,7 +23,7 @@ class House extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'house_memberships')
-            ->withPivot(['role', 'apartment', 'entrance', 'floor'])
+            ->withPivot(['role', 'apartment', 'entrance', 'floor', 'notifications_enabled'])
             ->withTimestamps();
     }
 

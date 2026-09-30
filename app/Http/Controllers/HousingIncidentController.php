@@ -24,6 +24,7 @@ class HousingIncidentController extends Controller
                 'address' => $house->address,
                 'role' => $house->pivot->role,
                 'layout' => $house->layout ?? [],
+                'notificationsEnabled' => (bool) $house->pivot->notifications_enabled,
             ]);
 
         return response()->json(['houses' => $houses]);

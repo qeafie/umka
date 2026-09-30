@@ -21,6 +21,8 @@ return [
     'max' => [
         'bot_token' => env('MAX_BOT_TOKEN'),
         'bot_username' => env('MAX_BOT_USERNAME'),
+        'webhook_secret' => env('MAX_WEBHOOK_SECRET'),
+        'webhook_url' => env('MAX_WEBHOOK_URL'),
         'init_data_ttl_seconds' => env('MAX_INIT_DATA_TTL_SECONDS', 86400),
         'clock_skew_seconds' => env('MAX_CLOCK_SKEW_SECONDS', 60),
     ],
