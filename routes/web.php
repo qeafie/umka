@@ -3,10 +3,12 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HouseAccessController;
 use App\Http\Controllers\HouseInvitationController;
+use App\Http\Controllers\HouseNotificationController;
 use App\Http\Controllers\HousingIncidentController;
 use App\Http\Controllers\HousingRequestDraftController;
 use App\Http\Controllers\IncidentWorkflowController;
 use App\Http\Controllers\MaxSessionController;
+use App\Http\Controllers\MaxWebhookController;
 use App\Http\Controllers\MeterController;
 use App\Http\Controllers\MeterReadingController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +17,10 @@ Route::get('/', HomeController::class)->name('home');
 Route::post('/appeals/preview', HousingRequestDraftController::class)->name('appeals.preview');
 Route::post('/auth/max', MaxSessionController::class)->middleware('throttle:10,1')->name('auth.max');
 Route::middleware('auth')->group(function () {
+    Route::get('/houses/{house}/incidents/{incident}/surveys', [HouseNotificationController::class, 'summary'])->whereNumber(['house', 'incident'])->name('house.surveys.summary');
+    Route::get('/houses/{house}/notifications', [HouseNotificationController::class, 'show'])->whereNumber('house')->name('house.notifications.show');
+    Route::put('/houses/{house}/notifications', [HouseNotificationController::class, 'update'])->whereNumber('house')->name('house.notifications.update');
+    Route::post('/houses/{house}/incidents/{incident}/surveys', [HouseNotificationController::class, 'store'])->whereNumber(['house', 'incident'])->middleware('throttle:10,1')->name('house.surveys.store');
     Route::get('/admin/houses/{house}/invitations', [HouseInvitationController::class, 'index'])->whereNumber('house')->name('invitations.index');
     Route::post('/admin/houses/{house}/invitations', [HouseInvitationController::class, 'store'])->middleware('throttle:20,1')->whereNumber('house')->name('invitations.store');
     Route::delete('/admin/houses/{house}/invitations/{invitation}', [HouseInvitationController::class, 'destroy'])->whereNumber(['house', 'invitation'])->name('invitations.destroy');
@@ -49,3 +55,5 @@ Route::middleware('auth')->group(function () {
         ->whereNumber('meterId')
         ->name('meters.readings.store');
 });
+
+Route::post('/api/max/webhook', MaxWebhookController::class)->name('max.webhook');

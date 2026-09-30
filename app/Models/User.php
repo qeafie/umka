@@ -40,7 +40,7 @@ class User extends Authenticatable
     public function houses(): BelongsToMany
     {
         return $this->belongsToMany(House::class, 'house_memberships')
-            ->withPivot(['role', 'apartment', 'entrance', 'floor'])
+            ->withPivot(['role', 'apartment', 'entrance', 'floor', 'notifications_enabled'])
             ->withTimestamps();
     }
 }

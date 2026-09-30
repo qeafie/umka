@@ -5,6 +5,8 @@ import IncidentHouseMap from '../components/IncidentHouseMap.vue';
 import HouseMapSettings from '../components/HouseMapSettings.vue';
 import HouseMemberAccess from '../components/HouseMemberAccess.vue';
 import JoinHouse from '../components/JoinHouse.vue';
+import NotificationSettings from '../components/NotificationSettings.vue';
+import IncidentSurvey from '../components/IncidentSurvey.vue';
 const invitationToken = ref('');
 
 const props = defineProps({
@@ -639,6 +641,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <template v-if="selectedHouse && !isLoadingIncidents">
+                    <NotificationSettings v-if="selectedHouse.role === 'resident'" :key="selectedHouse.id" :house="selectedHouse" @updated="selectedHouse.notificationsEnabled = $event" />
                     <section class="incident-list" aria-labelledby="active-incidents-title">
                         <div class="section-heading">
                             <h2 id="active-incidents-title">Сообщения жителей</h2>
@@ -694,6 +697,7 @@ onBeforeUnmount(() => {
                                 </template>
                                 <small v-else>Подтвердить восстановление могут жители, сообщившие об этой проблеме.</small>
                             </div>
+                            <IncidentSurvey v-if="selectedHouse.role === 'dispatcher'" :house="selectedHouse" :incident="incident" />
                             <IncidentHouseMap v-if="incident.houseMap" :map="incident.houseMap" />
                             <button
                                 v-if="incident.status === 'reported' || incident.status === 'in_progress'"
