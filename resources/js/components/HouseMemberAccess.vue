@@ -1,5 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import HouseInvitations from './HouseInvitations.vue';
+const showInvitations = ref(false);
 
 const props = defineProps({ house: { type: Object, required: true } });
 const emit = defineEmits(['updated']);
@@ -102,7 +104,9 @@ onMounted(loadMembers);
 <template>
     <section class="house-settings house-member-access" aria-label="Управление участниками дома">
         <h2>Участники и доступ</h2>
-        <p class="form-note">Роли действуют только в доме «{{ house.name }}». Назначать администраторов и приглашать новых участников здесь пока нельзя.</p>
+        <button class="text-button" type="button" @click="showInvitations = !showInvitations">{{ showInvitations ? 'Скрыть приглашения' : 'Пригласить жителя' }}</button>
+        <HouseInvitations v-if="showInvitations" :house="house" />
+        <p class="form-note">Роли действуют только в доме «{{ house.name }}». Назначение администраторов здесь недоступно.</p>
         <p v-if="error" class="meter-feedback meter-feedback-error" role="alert">{{ error }}</p>
         <p v-if="message" class="meter-feedback" role="status">{{ message }}</p>
         <p v-if="loading" role="status" aria-busy="true">Загружаем участников…</p>
